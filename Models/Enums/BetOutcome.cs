@@ -2,8 +2,8 @@
 {
     public enum BetOutcome
     {
+        Pending,
         Win,
-        Lose,
-        Pending
+        Lose
     }
 }

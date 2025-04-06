@@ -4,9 +4,12 @@ namespace RouletteTechTest.API.Services.Interfaces
 {
     public interface ISessionRepository
     {
-        Task<Session> GetByIdAsync(Guid id);
+        Task<IEnumerable<Session>> GetAllAsync();
+        Task<Session?> GetByIdAsync(Guid id);
         Task AddAsync(Session session);
-        Task UpdateAsync(Session session);
-        Task<List<Session>> GetByUserIdAsync(Guid userId);
+        void Update(Session session);
+        Task DeleteAsync(Guid id);
+        Task<Session?> GetActiveSessionByUserAsync(string userName);
+        Task AddPlayersToSession(Guid sessionId, IEnumerable<User> players);
     }
 }

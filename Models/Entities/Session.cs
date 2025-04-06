@@ -1,5 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace RouletteTechTest.API.Models.Entities
 {
@@ -10,31 +9,15 @@ namespace RouletteTechTest.API.Models.Entities
 
         [Required]
         public DateTime StartTime { get; set; } = DateTime.UtcNow;
-
         public DateTime? EndTime { get; set; }
 
         [Required]
-        [Range(0, double.MaxValue)]
-        public decimal InitialBalance { get; set; }
+        public List<Round> Rounds { get; set; } = new();
 
-        [Range(0, double.MaxValue)]
-        public decimal FinalBalance { get; set; }
 
-        // Foreign Key
+        //Relacion muchos a muchos, User => Sessions
         [Required]
-        public Guid UserId { get; set; }
+        public List<User> Players { get; set; } = new();
 
-        // Navigation properties
-        [ForeignKey("UserId")]
-        public User User { get; set; }
-
-        public List<Bet> Bets { get; set; } = new();
-
-        // Propiedades calculadas (no se mapean a la DB)
-        [NotMapped]
-        public decimal TotalBets => Bets.Sum(b => b.Amount);
-
-        [NotMapped]
-        public decimal NetProfit => FinalBalance - InitialBalance;
     }
 }

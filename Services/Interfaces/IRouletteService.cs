@@ -1,11 +1,6 @@
-﻿using RouletteTechTest.API.Models.DTOs;
-using RouletteTechTest.API.Models.DTOs.Bet;
+﻿using RouletteTechTest.API.Models.DTOs.Common;
 
-namespace RouletteTechTest.API.Services.Interfaces
+public interface IRouletteService
 {
-    public interface IRouletteService
-    {
-        Task<SpinResultDTO> SpinAsync();
-        Task<BetResponseDTO> PlaceBetAsync(Guid userId, BetPlaceDTO bet);
-    }
+    Task<SpinResultDTO> SpinAsync(Guid sessionId);
 }
