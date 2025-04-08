@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace RouletteTechTest.API.Migrations
 {
     /// <inheritdoc />
-    public partial class firstMigration : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -15,9 +15,9 @@ namespace RouletteTechTest.API.Migrations
                 name: "Sessions",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    StartTime = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    EndTime = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    StartTime = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    EndTime = table.Column<DateTime>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -28,8 +28,8 @@ namespace RouletteTechTest.API.Migrations
                 name: "Users",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UserName = table.Column<string>(type: "nvarchar(max)", nullable: false, collation: "SQL_Latin1_General_CP1_CI_AS"),
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    UserName = table.Column<string>(type: "TEXT", nullable: false),
                     Balance = table.Column<decimal>(type: "decimal(18,2)", nullable: false)
                 },
                 constraints: table =>
@@ -41,15 +41,15 @@ namespace RouletteTechTest.API.Migrations
                 name: "Rounds",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    RoundNumber = table.Column<int>(type: "int", nullable: false),
-                    StartTime = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    EndTime = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    Result_ResultNumber = table.Column<int>(type: "int", nullable: true),
-                    Result_Color = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Result_Parity = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Result_SpinTime = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    SessionId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    RoundNumber = table.Column<int>(type: "INTEGER", nullable: false),
+                    StartTime = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    EndTime = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    Result_ResultNumber = table.Column<int>(type: "INTEGER", nullable: true),
+                    Result_Color = table.Column<string>(type: "TEXT", nullable: true),
+                    Result_Parity = table.Column<string>(type: "TEXT", nullable: true),
+                    Result_SpinTime = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    SessionId = table.Column<Guid>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -66,8 +66,8 @@ namespace RouletteTechTest.API.Migrations
                 name: "SessionPlayers",
                 columns: table => new
                 {
-                    PlayersId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    SessionsId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    PlayersId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    SessionsId = table.Column<Guid>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -90,16 +90,16 @@ namespace RouletteTechTest.API.Migrations
                 name: "Bets",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
                     Amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    UserName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Type = table.Column<int>(type: "int", nullable: false),
-                    BetValue = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    TimeStamp = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Outcome = table.Column<int>(type: "int", nullable: false),
+                    UserName = table.Column<string>(type: "TEXT", nullable: false),
+                    Type = table.Column<int>(type: "INTEGER", nullable: false),
+                    BetValue = table.Column<string>(type: "TEXT", nullable: false),
+                    TimeStamp = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    Outcome = table.Column<int>(type: "INTEGER", nullable: false),
                     Prize = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    RoundId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    RoundId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    UserId = table.Column<Guid>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
