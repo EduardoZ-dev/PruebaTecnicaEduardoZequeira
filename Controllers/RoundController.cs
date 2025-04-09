@@ -61,31 +61,42 @@ namespace RouletteTechTest.API.Controllers
         }
 
         [HttpPost("start")]
-        public async Task<IActionResult> StartRound([FromBody] StartRoundRequest request)
+        public async Task<IActionResult> StartRound([FromBody] StartRoundDTO request)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             try
             {
-                var newRound = await _roundService.StartRoundAsync(request.SessionId);
-                return Ok(new
-                {
-                    RoundId = newRound.Id,
-                    newRound.StartTime,
-                    SessionId = newRound.SessionId
-                });
+                var roundDTO = await _roundService.StartRoundAsync(request.UserName);
+                return Ok(roundDTO);
             }
-            catch (Exception ex)
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
             {
                 return BadRequest(new { Error = ex.Message });
             }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Error = "Error interno", Details = ex.Message });
+            }
         }
+
 
         [HttpPost("{roundId}/close")]
         public async Task<IActionResult> CloseRound(Guid roundId)
         {
             try
             {
-                await _roundService.CloseRoundAsync(roundId);
-                return NoContent(); 
+                var result = await _roundService.CloseRoundAsync(roundId);
+                return Ok(new
+                {
+                    message = "Ronda cerrada exitosamente",
+                    result
+                });
             }
             catch (InvalidOperationException ex)
             {
@@ -94,6 +105,20 @@ namespace RouletteTechTest.API.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { message = ex.Message, stackTrace = ex.StackTrace });
+            }
+        }
+
+        [HttpGet("current-active/{userName}")]
+        public async Task<IActionResult> GetCurrentActiveRound(string userName)
+        {
+            try
+            {
+                var round = await _roundService.GetCurrentActiveRoundAsync(userName);
+                return Ok(round);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
             }
         }
 
@@ -126,34 +151,7 @@ namespace RouletteTechTest.API.Controllers
             {
                 return BadRequest(new { Error = ex.Message });
             }
-        }
 
-        [HttpGet("session/{sessionId}")]
-        public async Task<IActionResult> GetRoundsBySession(Guid sessionId)
-        {
-            try
-            {
-                var rounds = await _roundService.GetRoundsBySessionAsync(sessionId);
-                return Ok(rounds.Select(r => new
-                {
-                    r.Id,
-                    r.StartTime,
-                    r.EndTime,
-                    IsClosed = r.EndTime.HasValue,
-                    Result = r.Result != null ? new
-                    {
-                        r.Result.ResultNumber,
-                        r.Result.Color,
-                        r.Result.Parity,
-                        r.Result.SpinTime
-                    } : null,
-                    TotalBets = r.Bets?.Count ?? 0
-                }));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
         }
     }
 }

@@ -6,7 +6,7 @@ namespace RouletteTechTest.API.Services.Interfaces
     {
         Task<IEnumerable<SessionResponseDTO>> GetAllSessionsAsync();
         Task<SessionResponseDTO> CreateSessionAsync(SessionCreateDTO createDto);
-        Task<SessionResponseDTO> AddPlayersToSessionAsync(Guid sessionId, SessionAddPlayersDTO addPlayersDto);
+        Task<SessionResponseDTO> AddPlayersToSessionAsync(string userName, SessionAddPlayersDTO addPlayersDto);
         Task EndSessionAsync(Guid sessionId);
         Task<SessionResponseDTO> GetSessionByIdAsync(Guid id);
     }

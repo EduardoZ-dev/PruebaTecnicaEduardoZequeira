@@ -17,23 +17,29 @@ namespace RouletteTechTest.API.Controllers
         [HttpPost("place-bet")]
         public async Task<IActionResult> PlaceBet([FromBody] BetRequestDTO request)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             try
             {
                 var result = await _betService.ProcessBetAndAdjustBalanceAsync(request);
 
+                // Mapeo manual a BetResultDTO
+                var response = new BetResultDTO
+                {
+                    WinningNumber = result.WinningNumber,
+                    Outcome = result.Outcome,
+                    Prize = result.Prize,
+                    Balance = result.Balance,
+                    BetAmount = result.BetAmount,
+                    BetType = result.BetType.ToString(),
+                    BetValue = result.BetValue
+                };
+
                 return Ok(new
                 {
                     Message = "Apuesta procesada exitosamente",
-                    Result = new
-                    {
-                        result.WinningNumber,
-                        result.Outcome,
-                        result.Prize,
-                        result.Balance,
-                        result.BetAmount,
-                        result.BetType,
-                        result.BetValue
-                    }
+                    Result = response
                 });
             }
             catch (Exception ex)

@@ -6,10 +6,12 @@ namespace RouletteTechTest.API.Services.Interfaces
     public interface IRoundService
     {
         Task<IEnumerable<RoundResponseDTO>> GetAllRoundAsync();
-        Task<Round> StartRoundAsync(Guid sessionId);
-        Task CloseRoundAsync(Guid roundId);
+        //Task<Round> CreateRoundAsync(string userName);
+        Task<RoundDTO> StartRoundAsync(string userName);
+        Task<RoundCloseResultDTO> CloseRoundAsync(Guid roundId);
         Task<Round> GetRoundDetailsAsync(Guid roundId);
-        Task<IEnumerable<Round>> GetRoundsBySessionAsync(Guid sessionId);
+        Task<RoundDTO> GetCurrentActiveRoundAsync(string userName);
+
 
     }
 }

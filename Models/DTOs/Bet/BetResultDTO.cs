@@ -7,7 +7,7 @@
         public decimal? Prize { get; set; }
         public decimal Balance { get; set; }
         public decimal BetAmount { get; set; }
-        public string BetType { get; set; } = string.Empty;
-        public string BetValue { get; set; } = string.Empty;
+        public string BetType { get; set; } = null!;
+        public string BetValue { get; set; } = null!;
     }
 }

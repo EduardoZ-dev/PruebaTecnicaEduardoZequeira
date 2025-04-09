@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 using RouletteTechTest.API.Models.DTOs.Common;
+using System.Text.Json.Serialization;
 
 namespace RouletteTechTest.API.Models.Entities
 {
@@ -8,6 +9,9 @@ namespace RouletteTechTest.API.Models.Entities
     {
         [Key]
         public Guid Id { get; set; }
+
+        [Required]
+        public string UserName { get; set; } = null!;
 
         [Required]
         public int RoundNumber { get; set; }
@@ -25,7 +29,9 @@ namespace RouletteTechTest.API.Models.Entities
         //Relacion con Session: Cada ronda pertenece a una sesion
         [Required]
         public Guid SessionId { get; set; }
+
         [ForeignKey("SessionId")]
+        [JsonIgnore]
         public Session Session { get; set; }
     }
 }

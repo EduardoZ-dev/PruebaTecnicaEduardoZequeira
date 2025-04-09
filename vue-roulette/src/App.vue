@@ -1,11 +1,12 @@
 <template>
   <div id="app">
-    <GameView />
+    <router-view />
   </div>
 </template>
 
 <script setup>
 import GameView from '@/views/GameView.vue';
+import Welcome  from '@/views/Welcome.vue';
 
 </script>
 

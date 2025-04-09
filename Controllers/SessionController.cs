@@ -45,33 +45,27 @@ namespace RouletteTechTest.API.Controllers
             try
             {
                 var session = await _sessionService.CreateSessionAsync(createDto);
-                return CreatedAtAction(nameof(GetSessionById), new { id = session.Id }, session);
+                return CreatedAtAction(
+                    nameof(GetSessionById),
+                    new { id = session.Id },
+                    session
+                );
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(ex.Message);
-            }
-        }
-
-        [HttpPost("{sessionId}/players")]
-        public async Task<IActionResult> AddPlayersToSession(Guid sessionId,
-            [FromBody] SessionAddPlayersDTO addPlayersDto)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            try
-            {
-                var session = await _sessionService.AddPlayersToSessionAsync(sessionId, addPlayersDto);
-                return Ok(session);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ex.Message);
+                return NotFound(new { Error = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(ex.Message);
+                return Conflict(new { Error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    Error = "Error interno del servidor",
+                    Details = ex.Message
+                });
             }
         }
 

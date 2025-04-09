@@ -2,9 +2,9 @@
 {
     public enum BetType
     {
-        Color,
-        Parity,
-        Number
+        Number = 0,
+        Color = 1,
+        Parity = 2
     }
 }
 

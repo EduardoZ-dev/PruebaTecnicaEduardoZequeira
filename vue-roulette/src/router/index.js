@@ -8,9 +8,16 @@ import GameView from "@/views/GameView.vue";
 const routes = [
   {
     path: "/",
-    name: "Welcome",
-    component: Welcome,
+    redirect: "/welcome",
+    
   },
+  {
+  path: '/welcome',
+  name: 'Welcome',
+  component: Welcome
+  },
+  
+
   {
     path: "/roulette",
     name: "Roulette",

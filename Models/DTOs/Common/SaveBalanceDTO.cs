@@ -9,7 +9,6 @@ namespace RouletteTechTest.API.Models.DTOs.Common
         public string UserName { get; set; }
 
         [Required(ErrorMessage = "El monto es obligatorio.")]
-        [Range(1, 1000000, ErrorMessage = "El monto debe ser positivo.")]
         public decimal Amount { get; set; }
     }
 }

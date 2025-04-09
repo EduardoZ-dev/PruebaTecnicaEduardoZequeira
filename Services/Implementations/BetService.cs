@@ -69,7 +69,7 @@ public class BetService : IBetService
                     SessionId = session.Id 
                 };
 
-                await _uow.Rounds.AddRoundAsync(round);
+                await _uow.Rounds.CreateAsync(round);
                 await _uow.SaveChangesAsync();
             }
 

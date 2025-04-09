@@ -26,6 +26,30 @@ namespace RouletteTechTest.API.Services.Implementations
             return sessions.Select(MapToResponseDTO).ToList();
         }
 
+        public async Task<RoundDTO> GetCurrentActiveRoundAsync(string userName)
+        {
+            var sessions = await _uow.Sessions.GetByNameAsync(userName);
+            var activeSession = sessions.FirstOrDefault(s => s.EndTime == null);
+
+            if (activeSession == null)
+                throw new InvalidOperationException("No hay sesión activa para este usuario");
+
+            var activeRound = await _uow.Rounds.GetActiveRoundAsync(activeSession.Id);
+
+            if (activeRound == null)
+                throw new InvalidOperationException("No hay ronda activa en esta sesión");
+
+            return new RoundDTO
+            {
+                Id = activeRound.Id,
+                UserName = activeRound.UserName,
+                RoundNumber = activeRound.RoundNumber,
+                StartTime = activeRound.StartTime,
+                EndTime = activeRound.EndTime,
+                SessionId = activeRound.SessionId
+            };
+        }
+
         private RoundResponseDTO MapToResponseDTO(Round round)
         {
             return new RoundResponseDTO
@@ -56,64 +80,91 @@ namespace RouletteTechTest.API.Services.Implementations
             };
         }
 
-        public async Task<Round> StartRoundAsync(Guid sessionId)
+        public async Task<RoundDTO> StartRoundAsync(string userName)
         {
-            // Validar que la sesión existe
-            var session = await _uow.Sessions.GetByIdAsync(sessionId);
-            if (session == null)
-                throw new InvalidOperationException("Sesión no encontrada");
+            var sessions = await _uow.Sessions.GetByNameAsync(userName);
 
-            // Verificar si ya hay una ronda activa (sin cerrar) en esta sesión
-            var activeRounds = await _uow.Rounds.GetRoundsBySessionIdAsync(sessionId);
-            if (activeRounds.Any(r => !r.EndTime.HasValue))
-                throw new InvalidOperationException("No puedes crear una nueva ronda hasta cerrar la anterior.");
+            var activeSession = sessions.FirstOrDefault(s => s?.EndTime == null)
+                ?? throw new InvalidOperationException("No hay sesiones activas para este usuario");
 
+            var hasActiveRound = await _uow.Rounds.ExistsActiveRoundAsync(activeSession.Id);
+            if (hasActiveRound)
+                throw new InvalidOperationException("Ya existe una ronda activa en esta sesión");
 
-            // Crear nueva ronda
             var newRound = new Round
             {
-                SessionId = sessionId,
-                StartTime = DateTime.UtcNow
+                Id = Guid.NewGuid(),
+                SessionId = activeSession.Id,
+                UserName = userName,
+                StartTime = DateTime.UtcNow,
+                EndTime = null,
+                RoundNumber = activeSession.Rounds.Count + 1
             };
 
-            // Guardar en la base de datos
-            await _uow.Rounds.AddRoundAsync(newRound);
-            await _uow.SaveChangesAsync();
+            await _uow.BeginTransactionAsync();
+            try
+            {
+                await _uow.Rounds.CreateAsync(newRound);
+                await _uow.CommitAsync();
 
-            return newRound;
+                // Mapeo manual a DTO
+                return new RoundDTO
+                {
+                    Id = newRound.Id,
+                    UserName = newRound.UserName,
+                    RoundNumber = newRound.RoundNumber,
+                    StartTime = newRound.StartTime,
+                    EndTime = newRound.EndTime,
+                    SessionId = newRound.SessionId
+                };
+            }
+            catch
+            {
+                await _uow.RollbackAsync();
+                throw;
+            }
         }
 
-        public async Task CloseRoundAsync(Guid roundId)
+        public async Task<RoundCloseResultDTO> CloseRoundAsync(Guid roundId)
         {
             await using var transaction = await _uow.BeginTransactionAsync();
             try
             {
-                int resultNumber = _random.Next(0, 37); // 0-36 inclusive
+                int resultNumber = _random.Next(0, 37);
 
-                // 1. Obtener la ronda
                 var round = await _uow.Rounds.GetByIdAsync(roundId);
                 if (round == null || round.EndTime.HasValue)
                     throw new InvalidOperationException("Ronda no válida o ya cerrada");
 
-                // 2. Obtener apuestas de la ronda
                 var bets = await _uow.Bets.GetBetsByRoundAsync(roundId);
+                var betDtos = new List<BetDTO>();
 
-                // 3. Procesar cada apuesta
                 foreach (var bet in bets)
                 {
                     var result = _betCalculator.CalculateResult(bet, resultNumber);
                     bet.Outcome = result.Outcome;
                     bet.Prize = result.Prize;
 
-                    // Actualizar saldo si gana
                     if (result.Outcome == BetOutcome.Win)
                     {
                         var user = await _uow.Users.GetByIdAsync(bet.UserId);
                         user.Balance += bet.Prize;
-                        await _uow.Users.UpdateAsync(user); 
+                        await _uow.Users.UpdateAsync(user);
                     }
 
                     await _uow.Bets.UpdateBetAsync(bet);
+
+                    betDtos.Add(new BetDTO
+                    {
+                        Id = bet.Id,
+                        UserName = bet.User?.UserName ?? bet.UserName,
+                        BetType = bet.Type.ToString(),
+                        BetValue = bet.BetValue,
+                        Amount = bet.Amount,
+                        TimeStamp = bet.TimeStamp,
+                        Outcome = bet.Outcome.ToString(),
+                        Prize = bet.Prize
+                    });
                 }
 
                 round.EndTime = DateTime.UtcNow;
@@ -127,6 +178,14 @@ namespace RouletteTechTest.API.Services.Implementations
                 await _uow.Rounds.UpdateAsync(round);
                 await _uow.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                return new RoundCloseResultDTO
+                {
+                    ResultNumber = resultNumber,
+                    Color = round.Result.Color,
+                    Parity = round.Result.Parity,
+                    Bets = betDtos
+                };
             }
             catch
             {
@@ -148,11 +207,6 @@ namespace RouletteTechTest.API.Services.Implementations
         public async Task<Round> GetRoundDetailsAsync(Guid roundId)
         {
             return await _uow.Rounds.GetByIdAsync(roundId);
-        }
-
-        public async Task<IEnumerable<Round>> GetRoundsBySessionAsync(Guid sessionId)
-        {
-            return await _uow.Rounds.GetRoundsBySessionIdAsync(sessionId);
         }
     }
 }

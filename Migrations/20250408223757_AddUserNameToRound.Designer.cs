@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using RouletteTechTest.API.Data.Context;
 
@@ -10,9 +11,11 @@ using RouletteTechTest.API.Data.Context;
 namespace RouletteTechTest.API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250408223757_AddUserNameToRound")]
+    partial class AddUserNameToRound
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.0");
@@ -58,7 +61,7 @@ namespace RouletteTechTest.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Bets", (string)null);
+                    b.ToTable("Bets");
                 });
 
             modelBuilder.Entity("RouletteTechTest.API.Models.Entities.Round", b =>
@@ -87,7 +90,7 @@ namespace RouletteTechTest.API.Migrations
 
                     b.HasIndex("SessionId");
 
-                    b.ToTable("Rounds", (string)null);
+                    b.ToTable("Rounds");
                 });
 
             modelBuilder.Entity("RouletteTechTest.API.Models.Entities.Session", b =>
@@ -104,7 +107,7 @@ namespace RouletteTechTest.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Sessions", (string)null);
+                    b.ToTable("Sessions");
                 });
 
             modelBuilder.Entity("RouletteTechTest.API.Models.Entities.User", b =>
@@ -122,7 +125,7 @@ namespace RouletteTechTest.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("SessionUser", b =>
@@ -167,7 +170,7 @@ namespace RouletteTechTest.API.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.OwnsOne("RouletteTechTest.API.Models.Entities.Round.Result#RouletteTechTest.API.Models.DTOs.Common.SpinResultDTO", "Result", b1 =>
+                    b.OwnsOne("RouletteTechTest.API.Models.DTOs.Common.SpinResultDTO", "Result", b1 =>
                         {
                             b1.Property<Guid>("RoundId")
                                 .HasColumnType("TEXT");
@@ -188,7 +191,7 @@ namespace RouletteTechTest.API.Migrations
 
                             b1.HasKey("RoundId");
 
-                            b1.ToTable("Rounds", (string)null);
+                            b1.ToTable("Rounds");
 
                             b1.WithOwner()
                                 .HasForeignKey("RoundId");

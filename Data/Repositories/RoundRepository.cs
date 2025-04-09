@@ -21,7 +21,7 @@ namespace RouletteTechTest.API.Data.Repositories
                     !r.EndTime.HasValue);
         }
 
-        public async Task AddRoundAsync(Round round)
+        public async Task CreateAsync(Round round)
         {
             await _context.Rounds.AddAsync(round);
         }
@@ -67,5 +67,37 @@ namespace RouletteTechTest.API.Data.Repositories
                 .AsNoTracking()
                 .ToListAsync();
         }
+
+
+        public async Task<Round> CreateAsync(string userName)
+        {
+            var round = new Round
+            {
+                Id = Guid.NewGuid(),
+                UserName = userName,
+                StartTime = DateTime.UtcNow,
+                EndTime = null
+            };
+
+            await _context.Rounds.AddAsync(round);
+            return round;
+        }
+
+        public async Task<IEnumerable<Round>> GetRoundsByNameAsync(string name)
+        {
+            return await _context.Rounds
+                .Where(r => r.UserName ==  name)
+                .Include(r => r.Bets)
+                .Include(r => r.Result)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
+        public async Task<bool> ExistsActiveRoundAsync(Guid sessionId)
+        {
+            return await _context.Rounds
+                .AnyAsync(r => r.SessionId == sessionId && !r.EndTime.HasValue);
+        }
     }
+    
 }

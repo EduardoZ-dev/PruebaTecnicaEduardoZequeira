@@ -22,12 +22,21 @@ namespace RouletteTechTest.API.Data.Repositories
                 .ToListAsync();
         }
 
-        public async Task<Session?> GetByIdAsync(Guid id)
+        public async Task<Session?> GetByIdAsync(Guid sessionId)
         {
             return await _context.Sessions
-                .Include(s => s.Players)
+                .Include(s => s.Players) // Incluir jugadores
+                .Include(s => s.Rounds)   // Incluir rondas
+                .FirstOrDefaultAsync(s => s.Id == sessionId);
+        }
+
+        public async Task<List<Session?>> GetByNameAsync(string userName)
+        {
+            return await _context.Sessions
+                .Where(s => s.Players.Any(p => p.UserName == userName))
                 .Include(s => s.Rounds)
-                .FirstOrDefaultAsync(s => s.Id == id);
+                .OrderByDescending(s => s.StartTime)
+                .ToListAsync();
         }
 
         public async Task<Session?> GetActiveSessionByUserAsync(string userName)
@@ -49,13 +58,15 @@ namespace RouletteTechTest.API.Data.Repositories
             _context.Entry(session).State = EntityState.Modified;
         }
 
-        public async Task DeleteAsync(Guid id)
+        public async Task DeleteSessionsByUserAsync(string userName)
         {
-            var session = await GetByIdAsync(id);
-            if (session != null)
-            {
-                _context.Sessions.Remove(session);
-            }
+            // Obtener todas las sesiones del usuario
+            var sessions = await _context.Sessions
+                .Where(s => s.Players.Any(p => p.UserName == userName))
+                .ToListAsync();
+
+            _context.Sessions.RemoveRange(sessions);
+            await _context.SaveChangesAsync();
         }
 
         public async Task<bool> HasActiveSessionAsync(Guid userId)
@@ -64,12 +75,30 @@ namespace RouletteTechTest.API.Data.Repositories
                 .AnyAsync(s => s.Players.Any(p => p.Id == userId) && s.EndTime == null);
         }
 
-        public async Task AddPlayersToSession(Guid sessionId, IEnumerable<User> players)
+        public async Task AddPlayersToSession(Guid sessionId, IEnumerable<string> userNames)
         {
-            var session = await GetByIdAsync(sessionId)
+            var session = await _context.Sessions
+                .Include(s => s.Players)
+                .FirstOrDefaultAsync(s => s.Id == sessionId)
                 ?? throw new KeyNotFoundException("Sesión no encontrada");
 
-            session.Players.AddRange(players);
+            // Obtener usuarios existentes
+            var existingUsers = await _context.Users
+                .Where(u => userNames.Contains(u.UserName))
+                .ToListAsync();
+
+            // Validar usuarios no encontrados
+            var notFound = userNames.Except(existingUsers.Select(u => u.UserName));
+            if (notFound.Any())
+            {
+                throw new ArgumentException($"Usuarios no existen: {string.Join(", ", notFound)}");
+            }
+
+            // Añadir solo nuevos jugadores
+            var newPlayers = existingUsers.Where(u => !session.Players.Contains(u));
+            session.Players.AddRange(newPlayers);
+
+            await _context.SaveChangesAsync();
         }
     }
 }

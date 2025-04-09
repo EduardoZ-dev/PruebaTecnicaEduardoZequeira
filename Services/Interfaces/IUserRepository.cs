@@ -7,6 +7,7 @@ namespace RouletteTechTest.API.Services.Interfaces
     {
         Task<IEnumerable<UserResponseDTO>> GetAllAsync();
         Task<User?> GetByNameAsync(string name);
+        Task<IEnumerable<User>> GetAllByNamesAsync(IEnumerable<string> userNames);
         Task<User?> GetByIdAsync(Guid id);
         Task AddAsync(User user);
         Task UpdateAsync(User user);
@@ -15,5 +16,6 @@ namespace RouletteTechTest.API.Services.Interfaces
         Task UpdateBalanceAsync(Guid userId, decimal amount);
 
         Task<bool> HasActiveSessionAsync(Guid userId);
+        Task<IEnumerable<User>> GetUsersWithActiveSessionsAsync(IEnumerable<Guid> userIds);
     }
 }

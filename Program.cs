@@ -20,7 +20,7 @@ builder.Services.AddCors(options =>
         policy =>
         {
             policy
-              .WithOrigins("http://localhost:5173") // URL de tu frontend
+              .WithOrigins("http://localhost:5173")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -59,6 +59,11 @@ builder.Services.AddScoped<IRoundService, RoundService>();
 
 builder.Services.AddScoped<IBetCalculator, BetCalculator>();
 
+builder.Services.AddControllers().AddJsonOptions(x =>
+{
+    x.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
+    x.JsonSerializerOptions.WriteIndented = true;
+});
 
 builder.Services.AddScoped<IUnitOfWork>(provider =>
 {

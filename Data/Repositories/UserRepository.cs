@@ -15,6 +15,21 @@ namespace RouletteTechTest.API.Data.Repositories
             _context = context;
         }
 
+        public async Task<IEnumerable<User>> GetAllByNamesAsync(IEnumerable<string> userNames)
+        {
+            return await _context.Users
+                .Where(u => userNames.Contains(u.UserName))
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<User>> GetUsersWithActiveSessionsAsync(IEnumerable<Guid> userIds)
+        {
+            return await _context.Users
+                .Where(u => userIds.Contains(u.Id) &&
+                       u.Sessions.Any(s => s.EndTime == null))
+                .ToListAsync();
+        }
+
         public async Task<IEnumerable<UserResponseDTO>> GetAllAsync()
         {
             return await _context.Users

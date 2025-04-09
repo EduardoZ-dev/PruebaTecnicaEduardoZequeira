@@ -19,7 +19,7 @@
   <script setup>
   import { ref } from 'vue';
   
-  const imageSrc = '/assets/roulette_2.png'; // ruta en public/assets
+  const imageSrc = '/assets/roulette_2.png';
   const width = ref(0);
   const height = ref(0);
   const outerRadius = ref(0);

@@ -1,10 +1,12 @@
-﻿namespace RouletteTechTest.API.Models.DTOs.Bet
+﻿using RouletteTechTest.API.Models.Enums;
+
+namespace RouletteTechTest.API.Models.DTOs.Bet
 {
     public class BetDTO
     {
         public Guid Id { get; set; }
         public string UserName { get; set; } = null!;
-        public string BetType { get; set; } = null!;
+        public string BetType { get; set; }
         public string BetValue { get; set; } = null!;
         public decimal Amount { get; set; }
         public DateTime TimeStamp { get; set; }

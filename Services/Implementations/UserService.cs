@@ -90,6 +90,9 @@ namespace RouletteTechTest.API.Services.Implementations
 
                 if (user == null)
                 {
+                    if (dto.Amount < 0)
+                        throw new Exception("No se puede crear un usuario con saldo negativo");
+
                     user = new User
                     {
                         UserName = dto.UserName.Trim(),
@@ -99,8 +102,13 @@ namespace RouletteTechTest.API.Services.Implementations
                 }
                 else
                 {
-                    user.Balance += dto.Amount;
-                    _uow.Users.UpdateAsync(user);
+                    var newBalance = user.Balance + dto.Amount;
+
+                    if (newBalance < 0)
+                        throw new Exception("Saldo insuficiente");
+
+                    user.Balance = newBalance;
+                    await _uow.Users.UpdateAsync(user); // Ojo: aquí te faltaba el `await`
                 }
 
                 await _uow.SaveChangesAsync();
