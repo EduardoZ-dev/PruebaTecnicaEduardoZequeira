@@ -5,9 +5,7 @@
 </template>
 
 <script setup>
-import GameView from '@/views/GameView.vue';
-import Welcome  from '@/views/Welcome.vue';
-
+//import GameView from '@/views/GameView.vue';
 </script>
 
 <style>

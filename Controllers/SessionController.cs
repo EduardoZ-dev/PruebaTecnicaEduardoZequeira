@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using RouletteTechTest.API.Models.DTOs.Session;
-using RouletteTechTest.API.Services.Interfaces;
+using RouletteTechTest.API.Models.Entities;
+using RouletteTechTest.API.Services;
 
 namespace RouletteTechTest.API.Controllers
 {
@@ -15,72 +15,67 @@ namespace RouletteTechTest.API.Controllers
             _sessionService = sessionService;
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetAllSessions()
+        // POST: api/session/start
+        [HttpPost("start")]
+        public ActionResult<SessionGame> StartSession([FromBody] StartSessionRequest request)
         {
-            var sessions = await _sessionService.GetAllSessionsAsync();
-            return Ok(sessions);
+            if (request == null || string.IsNullOrWhiteSpace(request.UserName) || request.InitialBalance < 0)
+            {
+                return BadRequest("Solicitud de inicio de sesión inválida.");
+            }
+
+            var session = _sessionService.StartSession(request.UserName, request.InitialBalance);
+            return Ok(session);
         }
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetSessionById(Guid id)
+        // POST: api/session/bet
+        [HttpPost("bet")]
+        public ActionResult<BetResult> ProcessBet([FromBody] SessionBetRequest request)
         {
-            try
+            if (request == null || request.SessionId == Guid.Empty)
             {
-                var session = await _sessionService.GetSessionByIdAsync(id);
-                return Ok(session);
+                return BadRequest("Solicitud de apuesta inválida.");
             }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ex.Message);
-            }
+            var betResult = _sessionService.ProcessBet(request.SessionId, request.Bet);
+            return Ok(betResult);
         }
 
-        [HttpPost]
-        public async Task<IActionResult> CreateSession([FromBody] SessionCreateDTO createDto)
+        // GET: api/session/history/{sessionId}
+        [HttpGet("history/{sessionId}")]
+        public ActionResult<SessionGame> GetSessionHistory(Guid sessionId)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            try
-            {
-                var session = await _sessionService.CreateSessionAsync(createDto);
-                return CreatedAtAction(
-                    nameof(GetSessionById),
-                    new { id = session.Id },
-                    session
-                );
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { Error = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Conflict(new { Error = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    Error = "Error interno del servidor",
-                    Details = ex.Message
-                });
-            }
+            var session = _sessionService.GetSession(sessionId);
+            if (session == null)
+                return NotFound("Sesión no encontrada.");
+            return Ok(session);
         }
 
-        [HttpPost("{sessionId}/end")]
-        public async Task<IActionResult> EndSession(Guid sessionId)
+        // POST: api/session/save
+        [HttpPost("save")]
+        public async Task<IActionResult> SaveSession([FromBody] SaveSessionRequest request)
         {
-            try
-            {
-                await _sessionService.EndSessionAsync(sessionId);
-                return NoContent();
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ex.Message);
-            }
+            if (request == null || request.SessionId == Guid.Empty)
+                return BadRequest("Solicitud inválida.");
+
+            await _sessionService.SaveSessionAsync(request.SessionId);
+            return Ok("Sesión guardada exitosamente y saldo actualizado.");
         }
+    }
+
+    public class StartSessionRequest
+    {
+        public string UserName { get; set; }
+        public decimal InitialBalance { get; set; }
+    }
+
+    public class SessionBetRequest
+    {
+        public Guid SessionId { get; set; }
+        public BetRequest Bet { get; set; }
+    }
+
+    public class SaveSessionRequest
+    {
+        public Guid SessionId { get; set; }
     }
 }

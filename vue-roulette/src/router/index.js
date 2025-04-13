@@ -1,28 +1,27 @@
-/*<body>
-  <div id="app"></div>
-</body>;*/
 import { createRouter, createWebHistory } from "vue-router";
-import Welcome from "@/views/Welcome.vue";
-import GameView from "@/views/GameView.vue";
+import GameMenu from "../views/GameMenu.vue";
+import GameView from "../views/GameView.vue";    
+import RouletteWheel from "../views/RouletteWheel.vue";
 
 const routes = [
   {
     path: "/",
-    redirect: "/welcome",
+    name: "GameMenu",
+    component: GameMenu
     
   },
-  {
-  path: '/welcome',
-  name: 'Welcome',
-  component: Welcome
-  },
-  
 
   {
-    path: "/roulette",
-    name: "Roulette",
-    component: GameView,
+    path: '/juego',
+    name: 'GameView',
+    component: GameView
   },
+
+  {
+    path: "/ruleta",
+    name: "RouletteWheel",
+    component: RouletteWheel
+  }
 ];
 
 const router = createRouter({
