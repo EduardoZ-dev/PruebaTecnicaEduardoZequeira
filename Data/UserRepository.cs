@@ -15,13 +15,16 @@ namespace RouletteTechTest.API.Data
 
         public async Task<User?> GetUserByNameAsync(string userName)
         {
-            // Retorna el primer usuario que coincide con el nombre, o null si no existe.
-            return await _context.Users.FirstOrDefaultAsync(u => u.UserName == userName);
+            // Normalizar el nombre a minúsculas para búsqueda case-insensitive
+            string normalizedName = userName.ToLower();
+            return await _context.Users
+                .FirstOrDefaultAsync(u => u.UserName.ToLower() == normalizedName);
         }
 
         public async Task AddUserAsync(User user)
         {
-            // Agrega el usuario al contexto.
+            // Normalizar el nombre antes de agregar
+            user.UserName = user.UserName.ToLower();
             await _context.Users.AddAsync(user);
         }
 

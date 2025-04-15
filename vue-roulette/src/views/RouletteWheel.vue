@@ -41,13 +41,13 @@
     </div>
 
     <!-- 🕹️ Botón para Girar -->
-    <button class="spin-button" @click="handleSpin">
-      <span class="spark"></span>
-      <span class="spark"></span>
-      <span class="spark"></span>
-      <span class="spark"></span>
-      <span class="text">Girar la Ruleta</span>
-      <span class="roulette-icon">🎡</span>
+    <button 
+      class="btn btn-primary" 
+      @click="handleSpin" 
+      :disabled="isSpinning"
+      :class="{ 'opacity-50 cursor-not-allowed': isSpinning }"
+    >
+      {{ isSpinning ? 'Girando...' : 'Girar' }}
     </button>
   </div>
 
@@ -66,8 +66,8 @@
       <p><strong>Tipo de apuesta:</strong> {{ bet.type }}</p>
       <p><strong>Valor apostado:</strong> {{ bet.value }}</p>
 
-      <p :style="{ color: resultadoApuesta ? '#00ff88' : '#ff4444', fontWeight: 'bold' }">
-        {{ resultadoApuesta ? '✅ GANASTE' : '❌ PERDISTEEEE' }}
+      <p :style="{ color: isBetWinner ? '#00ff88' : '#ff4444', fontWeight: 'bold' }">
+        {{ isBetWinner ? '✅ GANASTE' : '❌ PERDISTEEEE' }}
       </p>
     </div>
 
@@ -82,150 +82,314 @@
       <p><strong>Saldo:</strong> ${{ bet.balance }}</p>
       <p><strong>Monto apostado:</strong> ${{ bet.amount }}</p>
       <p><strong>Opción elegida:</strong> {{ bet.value }}</p>
+
+      <button class="save-button" @click="guardarSaldo" v-if="bet.balance > 0">
+        💾 Guardar Saldo Actual
+      </button>
+
+    </div>
+  </div>
+
+  <div v-if="showApuestaModal" class="modal-overlay">
+    <div class="modal-content">
+      <h2>🔁 Nueva Apuesta</h2>
+
+      <label>
+        <span>💰 Monto:</span>
+        <input type="number" v-model.number="bet.amount" min="1" :max="bet.balance" />
+      </label>
+
+      <label>
+        <span>🎯 Tipo:</span>
+        <select v-model="bet.type">
+          <option value="color">Color</option>
+          <option value="numero">Número</option>
+          <option value="paridad">Paridad</option>
+        </select>
+      </label>
+
+      <!-- Selector dinámico según tipo -->
+      <div v-if="bet.type === 'color'">
+        <label>
+          <span>🎨 Color:</span>
+          <select v-model="bet.value">
+            <option disabled value="">Selecciona un color</option>
+            <option value="red">Rojo</option>
+            <option value="black">Negro</option>
+          </select>
+        </label>
+      </div>
+
+      <div v-if="bet.type === 'paridad'">
+        <label>
+          <span>🔢 Paridad:</span>
+          <select v-model="bet.value">
+            <option disabled value="">Selecciona paridad</option>
+            <option value="par">Par</option>
+            <option value="impar">Impar</option>
+          </select>
+        </label>
+      </div>
+
+      <div v-if="bet.type === 'numero'">
+        <label>
+          <span>🔢 Número (0-36):</span>
+          <input type="number" v-model.number="bet.value" min="0" max="36" placeholder="Ej: 17" />
+        </label>
+      </div>
+
+      <button @click="confirmarNuevaApuesta">✅ Apostar</button>
     </div>
   </div>
 
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'; // 👈 Añade computed
-import { useRouter, useRoute } from 'vue-router'  // 👈 Importa ambos
+import { ref, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { 
+  startSession, 
+  processBet, 
+  saveSession, 
+  spinRoulette, 
+  placeBet, 
+  loadUser, 
+  updateUserBalance,
+  saveUserBalance
+} from '@/services/api';
 
 const router = useRouter()
-const route = useRoute()  // 👈 Necesario para acceder a route.query
+const route = useRoute()
 
-const resultadoApuesta = ref(null); // Puede ser null, true o false según corresponda
-
-//Variables reactivas
+// Variables reactivas
 const resultContainer = ref(null);
 const resultMessages = ref([]);
+const isBetWinner = ref(null);
+const isSpinning = ref(false);
+const showApuestaModal = ref(false);
+const currentSessionId = ref(null);
 
 const winningNumber = ref(null);
 const winningColor = ref('');
 
 const currentBalance = ref(Number(route.query.balance));
-//const isSpinning = ref(false);
 
-// Variables de estado:
-//const bets = ref([]);
-const history = ref([]);
-const userName = ref(localStorage.getItem('userName') || '');
-const user = ref(null);
-const balance = ref(0);
-
-
-
-
-function handleSpin() {
-
-  const speed = Math.floor(Math.random() * numSeg);
-  const num = getNum(-speed);
-  const col = getCol(-speed);
-
-  animateWheel(speed);
-
-  setTimeout(() => {
-    const write = addFlipper();
-    write(num, col);
-
-    // Guardar los valores visibles para el usuario
-    winningNumber.value = num;
-    winningColor.value = col; // <- esto es como 'rojo', 'negro', etc.
-    console.log('Resultado =>', winningNumber.value, winningColor.value); // 👈
-
-    evaluateBets(num, col);
-  }, 3000);
-}
-
-onMounted(async () => {
-  // Verificar que tenemos todos los parámetros necesarios
-  if (!route.query.userName || !route.query.betType) {
-    router.push('/');
-    return;
-  }
+const currentUser = ref({
+  name: route.query.userName,
+  balance: Number(route.query.balance)
 });
 
-
-
-const bet = computed(() => ({
+const currentBet = ref({
   userName: route.query.userName,
   balance: Number(route.query.balance),
   amount: Number(route.query.amount),
   value: route.query.option,
-  type: route.query.betType // Ahora sí se actualizará al cambiar la ruta
-}));
+  type: route.query.betType
+});
 
-function evaluateBets(winningNumber, winningColorResult) {
+const spinResult = ref(JSON.parse(route.query.spinResult || '{}'));
+const prize = ref(Number(route.query.prize));
+const message = ref(route.query.message);
 
-  console.log("🎯 Número que cayó:", winningNumber);
-  console.log("🎨 Color real:", winningColorResult);
-  console.log("🎰 Apuesta:", bet.value);
+const history = ref([]);
+const user = ref(null);
 
-  if (!bet.value.type) {
-    //addResultMessage('No se recibió tipo de apuesta', 'red');
+const bet = ref({
+  userName: route.query.userName,
+  balance: Number(route.query.balance),
+  amount: Number(route.query.amount),
+  value: route.query.option,
+  type: route.query.betType
+});
+
+const resetGame = () => {
+  winningNumber.value = null;
+  winningColor.value = '';
+  isBetWinner.value = null;
+
+  bet.value.amount = 0;
+  bet.value.value = '';
+  bet.value.type = '';
+
+  showApuestaModal.value = true;
+};
+
+const confirmarNuevaApuesta = () => {
+  // Validaciones básicas de UI
+  if (!bet.value.amount || !bet.value.type || !bet.value.value) {
+    alert("Completa todos los campos.");
     return;
   }
 
-  const betType = bet.value.type;
-  const betVal = bet.value.value;
-  const betAmount = Number(bet.value.amount);
-
-  const betTypeConfig = BET_CONFIG[betType];
-
-  if (!betTypeConfig) {
-    //addResultMessage(`Tipo de apuesta no válido: ${betType}`, 'red');
+  // Validación de monto positivo
+  if (bet.value.amount <= 0) {
+    alert("El monto debe ser mayor que cero.");
     return;
   }
 
-  // Variables para determinar el resultado
-  console.log("Comparando =>", betVal.toLowerCase(), "===", winningColorResult.toLowerCase());
-  let isWinner = false;
-  console.log("¿Ganó?", isWinner);
-  let multiplier = betTypeConfig.multiplier;
-  let winAmount = 0;
-  let resultMessage = '';
-
-  // Para apuesta de "color", usas la lógica definida; de lo contrario, la función check del BET_CONFIG
-  if (betType === 'color') {
-    isWinner = betVal.toLowerCase() === winningColorResult.toLowerCase();
-  } else {
-    isWinner = betTypeConfig.check(betVal, winningNumber);
+  // Validación de saldo suficiente
+  if (bet.value.amount > bet.value.balance) {
+    alert("No tienes suficiente saldo para esta apuesta.");
+    return;
   }
 
-  // Actualiza la variable reactiva para que el template pueda mostrar el resultado
-  resultadoApuesta.value = isWinner;
+  showApuestaModal.value = false;
+  handleSpin();
+};
 
-  winAmount = isWinner ? betAmount * multiplier : 0;
-  resultMessage = isWinner
-    ? betTypeConfig.winMessage(multiplier)
-    : `Perdiste ❌ Apostaste a ${betVal} (${betType})`;
+const handleSpin = async () => {
+  if (isSpinning.value) return;
 
-  //updateBalance(winAmount, betAmount);
-  //addResultMessage(resultMessage, isWinner ? 'green' : 'red', betAmount, winAmount);
-}
+  try {
+    isSpinning.value = true;
+    
+    // Validar que tenemos los datos necesarios
+    if (!currentUser.value?.name) {
+      throw new Error('No hay un usuario activo');
+    }
+    if (!currentBet.value?.amount || !currentBet.value?.type || !currentBet.value?.value) {
+      throw new Error('Datos de apuesta incompletos');
+    }
+    if (!currentSessionId.value) {
+      throw new Error('No hay una sesión activa');
+    }
 
-const BET_CONFIG = {
-  numero: {
-    multiplier: 2,
-    check: (betValue, winningNumber) => parseInt(betValue) === winningNumber,
-    winMessage: (multiplier) => `Ganó x${multiplier} (Número)`
-  },
-  color: {
-    multiplier: 1,
-    check: (betValue, winningNumber) => {
-      const winningColor = winningNumber === 0 ? 'verde' : winningNumber % 2 === 0 ? 'black' : 'red';
-      return betValue.toLowerCase() === winningColor;
-    },
-    winMessage: (multiplier) => `Ganó x${multiplier} (Color)`
-  },
-  paridad: {
-    multiplier: 1,
-    check: (betValue, winningNumber) => {
-      if (winningNumber === 0) return false;
-      const winningParity = winningNumber % 2 === 0 ? 'par' : 'impar';
-      return betValue.toLowerCase() === winningParity;
-    },
-    winMessage: (multiplier) => `Ganó x${multiplier} (Paridad)`
+    console.log('Procesando apuesta con sessionId:', currentSessionId.value);
+    console.log('Datos de la apuesta:', {
+      userName: currentUser.value.name,
+      amount: currentBet.value.amount,
+      type: currentBet.value.type,
+      value: currentBet.value.value
+    });
+    
+    // Procesar la apuesta
+    const betResult = await processBet(currentSessionId.value, {
+      userName: currentUser.value.name,
+      amount: currentBet.value.amount,
+      type: currentBet.value.type,
+      value: currentBet.value.value
+    });
+    
+    console.log('Resultado de la apuesta:', betResult);
+    
+    // Iniciar la animación de la ruleta
+    const animationDuration = 5000; // 5 segundos de animación
+    animateWheel(betResult.spinResult.number);
+
+    // Esperamos a que termine la animación antes de mostrar el resultado
+    await new Promise(resolve => setTimeout(resolve, animationDuration));
+    
+    // Mostrar el resultado que viene del backend
+    winningNumber.value = betResult.spinResult.number;
+    winningColor.value = betResult.spinResult.color;
+    isBetWinner.value = betResult.prize > 0;
+    
+    // Actualizar el saldo del usuario con el valor que viene del backend
+    currentUser.value.balance = betResult.newBalance;
+    currentBet.value.balance = betResult.newBalance;
+    
+    // Actualizar historial con los datos del backend
+    history.value.unshift({
+      number: betResult.spinResult.number,
+      amount: currentBet.value.amount,
+      result: betResult.prize > 0 ? `Ganó ${betResult.prize}` : `Perdió ${currentBet.value.amount}`
+    });
+
+    // Mantener solo los últimos 10 registros
+    if (history.value.length > 10) {
+      history.value = history.value.slice(0, 10);
+    }
+    
+  } catch (error) {
+    console.error('Error detallado en handleSpin:', error);
+    alert(error.message || 'Error al procesar la apuesta');
+  } finally {
+    isSpinning.value = false;
+  }
+};
+
+onMounted(async () => {
+  try {
+    // Verificar que tenemos los parámetros necesarios
+    if (!route.query.userName) {
+      throw new Error('Falta el nombre de usuario');
+    }
+
+    if (!route.query.balance) {
+      throw new Error('Falta el saldo inicial');
+    }
+
+    if (!route.query.amount) {
+      throw new Error('Falta el monto de la apuesta');
+    }
+
+    if (!route.query.option) {
+      throw new Error('Falta la opción de apuesta');
+    }
+
+    if (!route.query.betType) {
+      throw new Error('Falta el tipo de apuesta');
+    }
+
+    if (!route.query.sessionId) {
+      throw new Error('Falta el ID de la sesión');
+    }
+
+    console.log('Parámetros recibidos:', route.query);
+
+    // Inicializar el estado con los datos de la apuesta
+    currentUser.value = {
+      name: route.query.userName,
+      balance: Number(route.query.balance)
+    };
+
+    currentBet.value = {
+      userName: route.query.userName,
+      balance: Number(route.query.balance),
+      amount: Number(route.query.amount),
+      value: route.query.option,
+      type: route.query.betType
+    };
+
+    // Usar el sessionId que viene en los query parameters
+    currentSessionId.value = route.query.sessionId;
+
+    console.log('Usuario inicializado:', currentUser.value);
+    console.log('Apuesta inicializada:', currentBet.value);
+    console.log('Sesión:', currentSessionId.value);
+
+    // Procesar la apuesta inicial
+    await handleSpin();
+
+  } catch (error) {
+    console.error('Error al inicializar el juego:', error);
+    let errorMessage = 'Error al inicializar el juego. ';
+    
+    if (error.message.includes('Failed to fetch')) {
+      errorMessage += 'Verifica que el servidor esté corriendo.';
+    } else if (error.message.includes('JSON')) {
+      errorMessage += 'El servidor devolvió una respuesta inválida.';
+    } else {
+      errorMessage += error.message;
+    }
+    
+    alert(errorMessage);
+    router.push('/');
+  }
+});
+
+// Nueva función para guardar saldo
+const guardarSaldo = async () => {
+  try {
+    if (!currentUser.value.name) {
+      alert("Error: No hay usuario registrado");
+      return;
+    }
+
+    await saveUserBalance(currentUser.value.name, currentUser.value.balance);
+    alert(`✅ Saldo guardado: $${currentUser.value.balance}`);
+  } catch (error) {
+    alert("❌ Error guardando el saldo: " + error.message);
   }
 };
 
@@ -241,8 +405,8 @@ let accumulatedRotation = 0;
 
 const colorMap = {
   0: 'green',
-  1: 'red',   2: 'black', 3: 'red',   4: 'black', 5: 'red', 6: 'black',
-  7: 'red',   8: 'black', 9: 'red',  10: 'black', 11: 'black', 12: 'red',
+  1: 'red', 2: 'black', 3: 'red', 4: 'black', 5: 'red', 6: 'black',
+  7: 'red', 8: 'black', 9: 'red', 10: 'black', 11: 'black', 12: 'red',
   13: 'black', 14: 'red', 15: 'black', 16: 'red', 17: 'black', 18: 'red',
   19: 'red', 20: 'black', 21: 'red', 22: 'black', 23: 'red', 24: 'black',
   25: 'red', 26: 'black', 27: 'red', 28: 'black', 29: 'black', 30: 'red',
@@ -281,10 +445,16 @@ function addFlipper() {
   };
 }
 
-function animateWheel(speed) {
+function animateWheel(winningNumber) {
   const start = performance.now();
   const initial = accumulatedRotation;
-  const delta = segmentAngle * speed;
+  
+  // Calculamos el ángulo necesario para llegar al número ganador
+  const targetIndex = numbers.indexOf(winningNumber);
+  const targetAngle = (targetIndex * segmentAngle) + (Math.floor(Math.random() * 2 + 5) * 360); // 5-6 vueltas completas más el ángulo del número
+  
+  const delta = targetAngle;
+  
   function frame(now) {
     const t = Math.min((now - start) / 5000, 1);
     const eased = (--t) * t * t + 1;
@@ -299,7 +469,6 @@ function animateWheel(speed) {
   }
   requestAnimationFrame(frame);
 }
-
 
 // Funciones auxiliares
 /*function updateBalance(winAmount, betAmount) {
@@ -324,9 +493,6 @@ function animateWheel(speed) {
     `
   });
 }*/
-
-
-
 
 // Obtener usuario actual
 /*const fetchUsersAndSetCurrentUser = async () => {
@@ -366,8 +532,8 @@ function animateWheel(speed) {
 }*/
 
 // Refs de la ruleta
-//const layer2 = ref(null);
-//const layer4 = ref(null);
+const layer2 = ref(null);
+const layer4 = ref(null);
 
 </script>
 
@@ -737,5 +903,97 @@ function animateWheel(speed) {
 
 .betting-form button:hover {
   background: #2980b9;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.modal-content {
+  background-color: #fff;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 400px;
+}
+
+.modal-content h2 {
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.modal-content label {
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.modal-content label span {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.modal-content input,
+.modal-content select {
+  width: 100%;
+  padding: 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.modal-content input:focus,
+.modal-content select:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+.modal-content button {
+  width: 100%;
+  background-color: #007bff;
+  color: white;
+  padding: 0.8rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: background-color 0.2s;
+}
+
+.modal-content button:hover {
+  background-color: #0056b3;
+}
+
+.save-button {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 15px;
+  transition: background 0.3s;
+  font-size: 14px;
+}
+
+.save-button:hover {
+  background: #45a049;
+  transform: scale(1.02);
+}
+
+.save-button:active {
+  transform: scale(0.98);
 }
 </style>

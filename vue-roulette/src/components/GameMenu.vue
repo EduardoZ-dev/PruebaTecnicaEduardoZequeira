@@ -1,7 +1,6 @@
 <template>
   <div class="game-menu">
-
-    <!-- Pantalla de bienvenida -->
+    <!-- Pantalla de bienvenida solo si todo está falso -->
     <div v-if="!optionsVisible && !showNewGameForm && !showLoadUserForm" class="welcome-message">
       <h1>Comenzar juego</h1>
       <button class="btn-start" @click="startGame">Empezar</button>
@@ -14,46 +13,71 @@
       <button class="btn-exit" @click="exitGame">Salir</button>
     </div>
 
-    <!-- Formulario para nuevo juego -->
+    <!-- Formulario para Nuevo Juego -->
     <div v-if="showNewGameForm" class="new-game-form">
       <h2>Nuevo Juego</h2>
       <form @submit.prevent="submitNewGame">
         <div class="form-group">
           <label for="name">Nombre:</label>
-          <input id="name" type="text" v-model="newUserName" placeholder="Ingresa tu nombre" required />
+          <input 
+            id="name" 
+            type="text" 
+            v-model="newUserName" 
+            placeholder="Ingresa tu nombre" 
+            required 
+          />
         </div>
         <div class="form-group">
           <label for="balance">Saldo Inicial:</label>
-          <input id="balance" type="number" v-model.number="newUserBalance" placeholder="Ingresa el saldo inicial"
-            min="1" required />
+          <input 
+            id="balance" 
+            type="number" 
+            v-model.number="newUserBalance" 
+            placeholder="Ingresa el saldo inicial" 
+            min="1" 
+            required 
+          />
         </div>
         <div class="form-buttons">
-          <button type="submit" class="btn-submit">Iniciar Juego Nuevo Juego</button>
+          <!-- Se emite el evento "start-new-game" con los datos ingresados -->
+          <button type="submit" class="btn-submit">Iniciar Juego</button>
           <button type="button" class="btn-cancel" @click="cancelNewGame">Cancelar</button>
         </div>
       </form>
     </div>
 
-    <!-- Formulario para cargar usuario -->
+    <!-- Formulario para Cargar Juego -->
     <div v-if="showLoadUserForm" class="new-game-form">
       <h2>Cargar Juego</h2>
       <form @submit.prevent="submitLoadUser">
         <div class="form-group">
           <label for="loadName">Nombre:</label>
-          <input id="loadName" type="text" v-model="loadUserName" placeholder="Nombre guardado" required />
+          <input 
+            id="loadName" 
+            type="text" 
+            v-model="loadUserName" 
+            placeholder="Nombre guardado" 
+            required 
+          />
         </div>
         <div class="form-group">
           <label for="loadBalance">Saldo:</label>
-          <input id="loadBalance" type="number" v-model.number="loadUserBalance" placeholder="Saldo guardado" min="1"
-            required />
+          <input 
+            id="loadBalance" 
+            type="number" 
+            v-model.number="loadUserBalance" 
+            placeholder="Saldo guardado" 
+            min="1" 
+            required 
+          />
         </div>
         <div class="form-buttons">
-          <button type="submit" class="btn-submit">Cargar Juego userform</button>
+          <!-- Se emite el evento "load-game" con los datos ingresados -->
+          <button type="submit" class="btn-submit">Cargar Juego</button>
           <button type="button" class="btn-cancel" @click="cancelLoadGame">Cancelar</button>
         </div>
       </form>
     </div>
-
   </div>
 </template>
 
@@ -61,98 +85,115 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+// Utilizamos el router si es necesario para redireccionamientos (aunque en este flujo la redirección la gestiona el padre)
 const router = useRouter()
 
-// Emitimos el usuario al padre (GameView.vue)
-const emit = defineEmits(['start-game'])
+// Definición de eventos personalizados: uno para Nuevo Juego y otro para Cargar Juego.
+const emit = defineEmits(['start-new-game', 'load-game'])
 
-// Estados internos
+// Estados internos para controlar la UI del menú:
 const optionsVisible = ref(false)
 const showNewGameForm = ref(false)
 const showLoadUserForm = ref(false)
 
-// Formulario nuevo juego
+// Variables para el formulario de "Nuevo Juego":
 const newUserName = ref('')
 const newUserBalance = ref(0)
 
-// Formulario cargar juego
+// Variables para el formulario de "Cargar Juego":
 const loadUserName = ref('')
 const loadUserBalance = ref(0)
 
-// Mostrar opciones
+// Acciones del menú:
+
+// Al presionar "Empezar" se muestran las opciones principales.
 const startGame = () => {
   optionsVisible.value = true
+  // Aquí podemos decidir qué formulario mostrar por defecto; en este ejemplo dejamos la elección al usuario.
 }
 
-// Nuevo juego
+// Cuando se selecciona "Nuevo Juego":
 const newGame = () => {
   showNewGameForm.value = true
   showLoadUserForm.value = false
 }
 
-// Cargar juego
+// Cuando se selecciona "Cargar Juego":
 const loadUser = () => {
   showLoadUserForm.value = true
   showNewGameForm.value = false
 }
 
-// Salir
+// Opción de salir: se ocultan todas las vistas para volver a la pantalla de bienvenida.
 const exitGame = () => {
   optionsVisible.value = false
   showNewGameForm.value = false
   showLoadUserForm.value = false
 }
 
-// Confirmar nuevo juego
+// Función para confirmar "Nuevo Juego".
 const submitNewGame = () => {
-  if (!newUserName.value.trim() || newUserBalance.value <= 0) {
-    alert("Ingresa un nombre y un saldo válido.");
-    return;
-  }
+  console.log("Nombre del usuario:", newUserName.value)
+  console.log("Saldo del usuario:", newUserBalance.value)
 
-  // Emitir evento al padre
-  emit("start-game", {
+  if (!newUserName.value.trim() || newUserBalance.value <= 0) {
+    alert("Ingresa un nombre y un saldo válido.")
+    return
+  }
+  console.log("Enviando datos al padre (Nuevo Juego):", {
     name: newUserName.value,
     balance: newUserBalance.value
-  });
+  })
 
-  // Reiniciar estado interno del formulario
-  newUserName.value = "";
-  newUserBalance.value = null;
-  showNewGameForm.value = false;  // Ocultar formulario
-  optionsVisible.value = false;   // Ocultar menú de opciones
+  // Emitir evento al padre con los datos del nuevo juego.
+  emit('start-new-game', {
+    name: newUserName.value,
+    balance: newUserBalance.value
+  })
 
-  router.push({ name: 'GameView' })
-};
+  // Reiniciar los valores internos y ocultar formularios/menú.
+  newUserName.value = ''
+  newUserBalance.value = 0
+  showNewGameForm.value = false
+  optionsVisible.value = false
+}
 
-
-// Confirmar carga
+// Función para confirmar "Cargar Juego".
 const submitLoadUser = () => {
   if (!loadUserName.value.trim() || loadUserBalance.value <= 0) {
     alert("Ingresa un nombre y un saldo mayor a cero.")
     return
   }
 
-  emit('start-game', {
+  console.log("Enviando datos al padre (Cargar Juego):", {
     name: loadUserName.value,
     balance: loadUserBalance.value
   })
 
-  // Reset UI
+  // Emitir evento al padre con los datos para cargar juego.
+  emit("load-game", {
+    name: loadUserName.value,
+    balance: loadUserBalance.value
+  })
+
+  // Reiniciar los valores internos y ocultar los formularios y opciones.
+  loadUserName.value = ''
+  loadUserBalance.value = 0
   showLoadUserForm.value = false
   optionsVisible.value = false
 }
 
-// Cancelar formularios
+// Funciones para cancelar formularios y reiniciar el estado:
 const cancelNewGame = () => {
-  newUserName.value = '';
-  newUserBalance.value = 0;
-  showNewGameForm.value = false;
+  newUserName.value = ''
+  newUserBalance.value = 0
+  showNewGameForm.value = false
 }
+
 const cancelLoadGame = () => {
-  loadUserName.value = '';
-  loadUserBalance.value = 0;
-  showLoadUserForm.value = false;
+  loadUserName.value = ''
+  loadUserBalance.value = 0
+  showLoadUserForm.value = false
 }
 </script>
 
@@ -337,4 +378,4 @@ const cancelLoadGame = () => {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
-</style>
+</style> 

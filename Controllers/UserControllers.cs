@@ -18,6 +18,7 @@ namespace RouletteTechTest.API.Controllers
         [HttpGet("load/{userName}")]
         public async Task<ActionResult<User>> LoadUser(string userName)
         {
+            userName = userName.ToLower();
             var user = await _userRepository.GetUserByNameAsync(userName);
             if (user == null)
             {
@@ -33,25 +34,27 @@ namespace RouletteTechTest.API.Controllers
             if (request == null || string.IsNullOrWhiteSpace(request.UserName))
                 return BadRequest("Solicitud inválida.");
 
+            request.UserName = request.UserName.ToLower();
+
             var user = await _userRepository.GetUserByNameAsync(request.UserName);
             if (user == null)
             {
-                user = new User { UserName = request.UserName, Balance = request.Amount };
+                user = new User { UserName = request.UserName, Balance = request.NewBalance };
                 await _userRepository.AddUserAsync(user);
             }
             else
             {
-                user.Balance = request.Amount;
+                user.Balance += request.NewBalance;
                 await _userRepository.UpdateUserAsync(user);
             }
             await _userRepository.SaveChangesAsync();
-            return Ok("Saldo actualizado correctamente.");
+            return Ok(user);
         }
     }
 
     public class UpdateBalanceRequest
     {
         public string UserName { get; set; }
-        public decimal Amount { get; set; }
+        public decimal NewBalance { get; set; }
     }
 }

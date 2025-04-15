@@ -18,6 +18,12 @@ namespace RouletteTechTest.API.Services
 
         public SessionGame StartSession(string userName, decimal initialBalance)
         {
+            if (string.IsNullOrEmpty(userName))
+                throw new ArgumentException("El nombre de usuario no puede estar vacío");
+            
+            if (initialBalance <= 0)
+                throw new ArgumentException("El saldo inicial debe ser mayor que cero");
+
             var session = new SessionGame
             {
                 SessionId = Guid.NewGuid(),
@@ -31,10 +37,15 @@ namespace RouletteTechTest.API.Services
         public BetResult ProcessBet(Guid sessionId, BetRequest betRequest)
         {
             if (!_sessions.ContainsKey(sessionId))
-            {
-                throw new Exception("Sesión no encontrada.");
-            }
+                throw new ArgumentException("Sesión no encontrada");
+
             var session = _sessions[sessionId];
+            
+            if (!betRequest.IsValid())
+                throw new ArgumentException("Apuesta inválida");
+
+            if (session.CurrentBalance < betRequest.BetAmount)
+                throw new ArgumentException("Saldo insuficiente");
 
             var spinResult = _rouletteService.Spin();
             var prize = _rouletteService.CalculatePrize(betRequest, spinResult);
@@ -44,8 +55,8 @@ namespace RouletteTechTest.API.Services
                 SpinResult = spinResult,
                 Prize = prize,
                 Message = prize > 0
-                          ? $"¡Felicidades! Has ganado {prize:C}."
-                          : $"Lo siento, has perdido {Math.Abs(prize):C}.",
+                    ? $"¡Felicidades! Has ganado {prize:C}."
+                    : $"Lo siento, has perdido {Math.Abs(prize):C}.",
                 NewBalance = session.CurrentBalance + prize
             };
 
@@ -64,9 +75,8 @@ namespace RouletteTechTest.API.Services
         public async Task SaveSessionAsync(Guid sessionId)
         {
             if (!_sessions.ContainsKey(sessionId))
-            {
-                throw new Exception("Sesión no encontrada.");
-            }
+                throw new ArgumentException("Sesión no encontrada");
+
             var session = _sessions[sessionId];
 
             var user = await _userRepository.GetUserByNameAsync(session.UserName);
