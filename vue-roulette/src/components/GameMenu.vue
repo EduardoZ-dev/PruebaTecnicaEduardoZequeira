@@ -66,9 +66,8 @@
             id="loadBalance" 
             type="number" 
             v-model.number="loadUserBalance" 
-            placeholder="Saldo guardado" 
-            min="1" 
-            required 
+            placeholder="Saldo a recargar (opcional)" 
+            min="0" 
           />
         </div>
         <div class="form-buttons">
@@ -151,29 +150,28 @@ const submitNewGame = () => {
     balance: newUserBalance.value
   })
 
-  // Reiniciar los valores internos y ocultar formularios/menú.
+  // Reiniciar todos los estados
   newUserName.value = ''
   newUserBalance.value = 0
   showNewGameForm.value = false
+  showLoadUserForm.value = false
   optionsVisible.value = false
 }
 
 // Función para confirmar "Cargar Juego".
 const submitLoadUser = () => {
-  if (!loadUserName.value.trim() || loadUserBalance.value <= 0) {
-    alert("Ingresa un nombre y un saldo mayor a cero.")
+  if (!loadUserName.value.trim()) {
+    alert("Ingresa un nombre válido.")
     return
   }
 
   console.log("Enviando datos al padre (Cargar Juego):", {
-    name: loadUserName.value,
-    balance: loadUserBalance.value
+    name: loadUserName.value
   })
 
-  // Emitir evento al padre con los datos para cargar juego.
+  // Emitir evento al padre con solo el nombre para cargar juego.
   emit("load-game", {
-    name: loadUserName.value,
-    balance: loadUserBalance.value
+    name: loadUserName.value
   })
 
   // Reiniciar los valores internos y ocultar los formularios y opciones.

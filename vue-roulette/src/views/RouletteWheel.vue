@@ -3,9 +3,9 @@
     <!-- 🎲 Información del Jugador -->
     <div class="player-info">
       <div class="player-title">🎲 Jugador</div>
-      <div v-if="user">
-        <div><strong>Nombre:</strong> {{ user.name }}</div>
-        <div><strong>Balance:</strong> ${{ user.balance }}</div>
+      <div v-if="userStore.name">
+        <div><strong>Nombre:</strong> {{ userStore.name }}</div>
+        <div><strong>Balance:</strong> ${{ userStore.balance }}</div>
       </div>
       <div v-else>
         <p>Cargando usuario...</p>
@@ -49,6 +49,14 @@
     >
       {{ isSpinning ? 'Girando...' : 'Girar' }}
     </button>
+    <!-- Botón para abrir el modal de apuesta -->
+    <button 
+      class="btn btn-success" 
+      @click="showApuestaModal = true"
+      style="margin-top: 1rem; font-size: 1.1rem; font-weight: bold;"
+    >
+      🎲 Realizar Apuesta
+    </button>
   </div>
 
   <div class="resultado-y-apuesta">
@@ -58,35 +66,37 @@
 
       <p style="font-size: 2.2em; margin-bottom: 1rem;">
         <strong>{{ winningNumber }}</strong>
-        <span :style="{ color: winningColor === 'red' ? 'red' : winningColor === 'black' ? 'black' : 'green' }">
-          {{ winningColor }}
+        <span :style="{ color: winningColor === 'red' ? '#ff4444' : winningColor === 'black' ? '#333' : '#00ff88' }">
+          ● {{ winningColor }}
         </span>
       </p>
 
-      <p><strong>Tipo de apuesta:</strong> {{ bet.type }}</p>
-      <p><strong>Valor apostado:</strong> {{ bet.value }}</p>
+      <p><strong>Tipo de apuesta:</strong> {{ currentBet.type }}</p>
+      <p><strong>Monto apostado:</strong> ${{ currentBet.amount }}</p>
+      <p><strong>Opción elegida:</strong> {{ currentBet.value }}</p>
 
-      <p :style="{ color: isBetWinner ? '#00ff88' : '#ff4444', fontWeight: 'bold' }">
-        {{ isBetWinner ? '✅ GANASTE' : '❌ PERDISTEEEE' }}
+      <p :style="{ color: isBetWinner ? '#00ff88' : '#ff4444', fontWeight: 'bold', marginTop: '1rem' }">
+        {{ isBetWinner ? '✅ ¡GANASTE!' : '❌ ¡PERDISTE!' }}
       </p>
-    </div>
 
-    <div class="volver-a-apostar" v-if="winningNumber !== null">
-      <button @click="resetGame">🔁 Volver a Apostar</button>
+      <div class="volver-a-apostar">
+        <button @click="resetGame" class="btn-primary">
+          🔄 Volver a Apostar
+        </button>
+      </div>
     </div>
 
     <!-- 📋 Datos de la Apuesta -->
     <div class="apuesta-info">
       <h3>📋 Datos de la Apuesta</h3>
-      <p><strong>Usuario:</strong> {{ bet.userName }}</p>
-      <p><strong>Saldo:</strong> ${{ bet.balance }}</p>
-      <p><strong>Monto apostado:</strong> ${{ bet.amount }}</p>
-      <p><strong>Opción elegida:</strong> {{ bet.value }}</p>
+      <p><strong>Usuario:</strong> {{ userStore.name }}</p>
+      <p><strong>Saldo:</strong> ${{ userStore.balance }}</p>
+      <p><strong>Monto apostado:</strong> ${{ currentBet.amount || 0 }}</p>
+      <p><strong>Opción elegida:</strong> {{ currentBet.value || '-' }}</p>
 
-      <button class="save-button" @click="guardarSaldo" v-if="bet.balance > 0">
+      <button class="save-button" @click="guardarSaldo" v-if="userStore.balance > 0">
         💾 Guardar Saldo Actual
       </button>
-
     </div>
   </div>
 
@@ -102,50 +112,91 @@
       <label>
         <span>🎯 Tipo:</span>
         <select v-model="bet.type">
-          <option value="color">Color</option>
-          <option value="numero">Número</option>
-          <option value="paridad">Paridad</option>
+          <option value="Color">Color</option>
+          <option value="ParImpar">Par/Impar</option>
+          <option value="Numero">Número</option>
+          <option value="NumeroColor">Número y Color</option>
         </select>
       </label>
 
       <!-- Selector dinámico según tipo -->
-      <div v-if="bet.type === 'color'">
+      <div v-if="bet.type === 'Color'">
         <label>
           <span>🎨 Color:</span>
-          <select v-model="bet.value">
+          <select v-model="bet.selectedColor">
             <option disabled value="">Selecciona un color</option>
-            <option value="red">Rojo</option>
-            <option value="black">Negro</option>
+            <option value="negro">Negro</option>
+            <option value="rojo">Rojo</option>
           </select>
         </label>
       </div>
 
-      <div v-if="bet.type === 'paridad'">
-        <label>
-          <span>🔢 Paridad:</span>
-          <select v-model="bet.value">
-            <option disabled value="">Selecciona paridad</option>
-            <option value="par">Par</option>
-            <option value="impar">Impar</option>
-          </select>
-        </label>
-      </div>
-
-      <div v-if="bet.type === 'numero'">
+      <div v-if="bet.type === 'Numero'">
         <label>
           <span>🔢 Número (0-36):</span>
-          <input type="number" v-model.number="bet.value" min="0" max="36" placeholder="Ej: 17" />
+          <input 
+            type="number" 
+            v-model.number="bet.selectedNumber" 
+            min="0" 
+            max="36" 
+            placeholder="Ej: 17"
+            @input="validateNumberRange"
+          />
         </label>
       </div>
 
-      <button @click="confirmarNuevaApuesta">✅ Apostar</button>
+      <div v-if="bet.type === 'NumeroColor'">
+        <label>
+          <span>🎨 Color:</span>
+          <select v-model="bet.selectedColor">
+            <option value="rojo">Rojo</option>
+            <option value="negro">Negro</option>
+            <option value="verde">Verde</option>
+          </select>
+        </label>
+        <label>
+          <span>🔢 Número (0-36):</span>
+          <input 
+            type="number" 
+            v-model.number="bet.selectedNumber" 
+            min="0" 
+            max="36" 
+            placeholder="Ej: 17"
+            @input="validateNumberRange"
+          />
+        </label>
+        <div v-if="bet.selectedNumber !== null" class="color-preview">
+          <span>Color real del número: {{ getColorForNumber(bet.selectedNumber) }}</span>
+          <span v-if="bet.selectedColor" class="color-warning" :class="{ 'color-match': isColorMatch }">
+            {{ isColorMatch ? '✅ Color correcto' : '❌ El color no coincide con el número' }}
+          </span>
+        </div>
+      </div>
+
+      <div v-if="bet.type === 'ParImpar'">
+        <label>
+          <span>🔢 Par/Impar y Color:</span>
+          <select v-model="bet.selectedOption">
+            <option disabled value="">Selecciona una opción</option>
+            <option value="par-rojo">Par Rojo</option>
+            <option value="par-negro">Par Negro</option>
+            <option value="impar-rojo">Impar Rojo</option>
+            <option value="impar-negro">Impar Negro</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="modal-buttons">
+        <button @click="confirmarNuevaApuesta" class="btn-submit">✅ Apostar</button>
+        <button @click="showApuestaModal = false" class="btn-cancel">❌ Cancelar</button>
+      </div>
     </div>
   </div>
 
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { 
   startSession, 
@@ -157,6 +208,7 @@ import {
   updateUserBalance,
   saveUserBalance
 } from '@/services/api';
+import { useUserStore } from '@/stores/user';
 
 const router = useRouter()
 const route = useRoute()
@@ -172,19 +224,14 @@ const currentSessionId = ref(null);
 const winningNumber = ref(null);
 const winningColor = ref('');
 
-const currentBalance = ref(Number(route.query.balance));
-
-const currentUser = ref({
-  name: route.query.userName,
-  balance: Number(route.query.balance)
-});
+const userStore = useUserStore();
 
 const currentBet = ref({
-  userName: route.query.userName,
-  balance: Number(route.query.balance),
-  amount: Number(route.query.amount),
-  value: route.query.option,
-  type: route.query.betType
+  userName: userStore.name,
+  balance: userStore.balance,
+  amount: 0,
+  value: '',
+  type: ''
 });
 
 const spinResult = ref(JSON.parse(route.query.spinResult || '{}'));
@@ -195,111 +242,155 @@ const history = ref([]);
 const user = ref(null);
 
 const bet = ref({
-  userName: route.query.userName,
-  balance: Number(route.query.balance),
-  amount: Number(route.query.amount),
-  value: route.query.option,
-  type: route.query.betType
+  type: 'Color',
+  selectedColor: '',
+  selectedNumber: null,
+  value: 0
 });
 
+const confirmarNuevaApuesta = () => {
+  // Validación del monto
+  if (!bet.value.amount || bet.value.amount <= 0 || bet.value.amount > userStore.balance) {
+    alert('Por favor ingresa un monto válido');
+    return;
+  }
+
+  // Validación según el tipo de apuesta
+  let isValid = true;
+  let errorMessage = '';
+
+  console.log('DEBUG - Validando apuesta:', bet.value);
+
+  switch (bet.value.type) {
+    case 'Color':
+      if (!bet.value.selectedColor) {
+        isValid = false;
+        errorMessage = 'Por favor selecciona un color';
+      }
+      break;
+    case 'ParImpar':
+      if (!bet.value.selectedOption) {
+        isValid = false;
+        errorMessage = 'Por favor selecciona una opción de Par/Impar y color';
+      }
+      break;
+    case 'Numero':
+      if (bet.value.selectedNumber === null || bet.value.selectedNumber < 0 || bet.value.selectedNumber > 36) {
+        isValid = false;
+        errorMessage = 'Por favor ingresa un número entre 0 y 36';
+      }
+      break;
+    case 'NumeroColor':
+      if (bet.value.selectedNumber === null || bet.value.selectedNumber < 0 || bet.value.selectedNumber > 36) {
+        isValid = false;
+        errorMessage = 'Por favor ingresa un número entre 0 y 36';
+      } else if (!bet.value.selectedColor) {
+        isValid = false;
+        errorMessage = 'Por favor selecciona un color';
+      }
+      break;
+  }
+
+  if (!isValid) {
+    alert(errorMessage);
+    return;
+  }
+
+  // Preparar los datos de la apuesta
+  currentBet.value = {
+    userName: userStore.name,
+    balance: userStore.balance,
+    amount: bet.value.amount,
+    type: bet.value.type,
+    selectedNumber: bet.value.selectedNumber,
+    selectedColor: bet.value.selectedColor,
+    selectedParity: bet.value.type === 'ParImpar' ? bet.value.selectedOption.split('-')[0] : null
+  };
+
+  console.log('DEBUG - Apuesta confirmada:', currentBet.value);
+  showApuestaModal.value = false;
+};
+
 const resetGame = () => {
+  // Resetear los valores del resultado
   winningNumber.value = null;
   winningColor.value = '';
   isBetWinner.value = null;
-
-  bet.value.amount = 0;
-  bet.value.value = '';
-  bet.value.type = '';
-
+  
+  // Mostrar el modal de nueva apuesta
   showApuestaModal.value = true;
-};
-
-const confirmarNuevaApuesta = () => {
-  // Validaciones básicas de UI
-  if (!bet.value.amount || !bet.value.type || !bet.value.value) {
-    alert("Completa todos los campos.");
-    return;
-  }
-
-  // Validación de monto positivo
-  if (bet.value.amount <= 0) {
-    alert("El monto debe ser mayor que cero.");
-    return;
-  }
-
-  // Validación de saldo suficiente
-  if (bet.value.amount > bet.value.balance) {
-    alert("No tienes suficiente saldo para esta apuesta.");
-    return;
-  }
-
-  showApuestaModal.value = false;
-  handleSpin();
+  
+  // Resetear el formulario de apuesta
+  bet.value = {
+    type: 'Color',
+    selectedColor: '',
+    selectedNumber: null,
+    value: 0
+  };
 };
 
 const handleSpin = async () => {
   if (isSpinning.value) return;
-
   try {
     isSpinning.value = true;
+    if (!userStore.name) throw new Error('No hay un usuario activo');
+    if (!currentBet.value.amount || !currentBet.value.type) throw new Error('Datos de apuesta incompletos');
+    if (!userStore.sessionId) throw new Error('No hay una sesión activa');
+
+    // Mapear el tipo de apuesta al enum del backend
+    const betTypeMap = {
+      'Color': 0,
+      'ParImpar': 1,
+      'Numero': 2,
+      'NumeroColor': 3
+    };
+
+    // Construir el objeto de apuesta
+    const betRequest = {
+      userName: userStore.name,
+      type: betTypeMap[currentBet.value.type],
+      amount: parseFloat(currentBet.value.amount),
+      selectedColor: currentBet.value.selectedColor,
+      selectedParity: currentBet.value.selectedParity,
+      selectedNumber: currentBet.value.selectedNumber
+    };
+
+    console.log('DEBUG - Enviando apuesta:', {
+      sessionId: userStore.sessionId,
+      betRequest: JSON.stringify(betRequest, null, 2)
+    });
+
+    const betResult = await processBet(userStore.sessionId, betRequest);
     
-    // Validar que tenemos los datos necesarios
-    if (!currentUser.value?.name) {
-      throw new Error('No hay un usuario activo');
-    }
-    if (!currentBet.value?.amount || !currentBet.value?.type || !currentBet.value?.value) {
-      throw new Error('Datos de apuesta incompletos');
-    }
-    if (!currentSessionId.value) {
-      throw new Error('No hay una sesión activa');
+    console.log('DEBUG - Respuesta recibida:', JSON.stringify(betResult, null, 2));
+
+    if (!betResult || !betResult.betResult || !betResult.betResult.spinResult) {
+      throw new Error('Respuesta inválida del servidor');
     }
 
-    console.log('Procesando apuesta con sessionId:', currentSessionId.value);
-    console.log('Datos de la apuesta:', {
-      userName: currentUser.value.name,
-      amount: currentBet.value.amount,
-      type: currentBet.value.type,
-      value: currentBet.value.value
-    });
-    
-    // Procesar la apuesta
-    const betResult = await processBet(currentSessionId.value, {
-      userName: currentUser.value.name,
-      amount: currentBet.value.amount,
-      type: currentBet.value.type,
-      value: currentBet.value.value
-    });
-    
-    console.log('Resultado de la apuesta:', betResult);
-    
-    // Iniciar la animación de la ruleta
-    const animationDuration = 5000; // 5 segundos de animación
-    animateWheel(betResult.spinResult.number);
+    const { spinResult, prize, newBalance } = betResult.betResult;
 
-    // Esperamos a que termine la animación antes de mostrar el resultado
-    await new Promise(resolve => setTimeout(resolve, animationDuration));
+    if (!spinResult || typeof spinResult.number === 'undefined') {
+      console.error('DEBUG - Resultado inválido:', spinResult);
+      throw new Error('Resultado de giro inválido');
+    }
+
+    winningNumber.value = spinResult.number;
+    winningColor.value = spinResult.color;
+    isBetWinner.value = prize > 0;
+    userStore.updateBalance(newBalance);
     
-    // Mostrar el resultado que viene del backend
-    winningNumber.value = betResult.spinResult.number;
-    winningColor.value = betResult.spinResult.color;
-    isBetWinner.value = betResult.prize > 0;
-    
-    // Actualizar el saldo del usuario con el valor que viene del backend
-    currentUser.value.balance = betResult.newBalance;
-    currentBet.value.balance = betResult.newBalance;
-    
-    // Actualizar historial con los datos del backend
     history.value.unshift({
-      number: betResult.spinResult.number,
+      number: spinResult.number,
       amount: currentBet.value.amount,
-      result: betResult.prize > 0 ? `Ganó ${betResult.prize}` : `Perdió ${currentBet.value.amount}`
+      result: prize > 0 ? `Ganó ${prize}` : `Perdió ${currentBet.value.amount}`
     });
-
-    // Mantener solo los últimos 10 registros
+    
     if (history.value.length > 10) {
       history.value = history.value.slice(0, 10);
     }
     
+    animateWheel(winningNumber.value);
   } catch (error) {
     console.error('Error detallado en handleSpin:', error);
     alert(error.message || 'Error al procesar la apuesta');
@@ -310,84 +401,80 @@ const handleSpin = async () => {
 
 onMounted(async () => {
   try {
-    // Verificar que tenemos los parámetros necesarios
-    if (!route.query.userName) {
-      throw new Error('Falta el nombre de usuario');
-    }
-
-    if (!route.query.balance) {
-      throw new Error('Falta el saldo inicial');
-    }
-
-    if (!route.query.amount) {
-      throw new Error('Falta el monto de la apuesta');
-    }
-
-    if (!route.query.option) {
-      throw new Error('Falta la opción de apuesta');
-    }
-
-    if (!route.query.betType) {
-      throw new Error('Falta el tipo de apuesta');
-    }
-
     if (!route.query.sessionId) {
-      throw new Error('Falta el ID de la sesión');
+      router.push('/');
+      return;
     }
-
-    console.log('Parámetros recibidos:', route.query);
-
-    // Inicializar el estado con los datos de la apuesta
-    currentUser.value = {
-      name: route.query.userName,
-      balance: Number(route.query.balance)
+    let sessionData;
+    try {
+      const response = await fetch(`https://localhost:7156/api/Session/history/${route.query.sessionId}`);
+      if (!response.ok) {
+        router.push('/');
+        return;
+      }
+      sessionData = await response.json();
+    } catch (error) {
+      router.push('/');
+      return;
+    }
+    userStore.setUser({
+      name: sessionData.userName,
+      balance: sessionData.currentBalance,
+      sessionId: route.query.sessionId
+    });
+    bet.value = {
+      userName: sessionData.userName,
+      balance: sessionData.currentBalance,
+      amount: 0,
+      value: '',
+      type: ''
     };
-
     currentBet.value = {
-      userName: route.query.userName,
-      balance: Number(route.query.balance),
-      amount: Number(route.query.amount),
-      value: route.query.option,
-      type: route.query.betType
+      userName: sessionData.userName,
+      balance: sessionData.currentBalance,
+      amount: 0,
+      value: '',
+      type: ''
     };
-
-    // Usar el sessionId que viene en los query parameters
-    currentSessionId.value = route.query.sessionId;
-
-    console.log('Usuario inicializado:', currentUser.value);
-    console.log('Apuesta inicializada:', currentBet.value);
-    console.log('Sesión:', currentSessionId.value);
-
-    // Procesar la apuesta inicial
-    await handleSpin();
-
-  } catch (error) {
-    console.error('Error al inicializar el juego:', error);
-    let errorMessage = 'Error al inicializar el juego. ';
-    
-    if (error.message.includes('Failed to fetch')) {
-      errorMessage += 'Verifica que el servidor esté corriendo.';
-    } else if (error.message.includes('JSON')) {
-      errorMessage += 'El servidor devolvió una respuesta inválida.';
-    } else {
-      errorMessage += error.message;
+    if (sessionData.betHistory && sessionData.betHistory.length > 0) {
+      history.value = sessionData.betHistory.map(bet => ({
+        number: bet.spinResult.number,
+        amount: bet.betAmount,
+        result: bet.prize > 0 ? `Ganó ${bet.prize}` : `Perdió ${bet.betAmount}`
+      }));
     }
-    
-    alert(errorMessage);
+  } catch (error) {
     router.push('/');
   }
 });
 
-// Nueva función para guardar saldo
 const guardarSaldo = async () => {
   try {
-    if (!currentUser.value.name) {
+    if (!userStore.name) {
       alert("Error: No hay usuario registrado");
       return;
     }
-
-    await saveUserBalance(currentUser.value.name, currentUser.value.balance);
-    alert(`✅ Saldo guardado: $${currentUser.value.balance}`);
+    if (!userStore.sessionId) {
+      alert("Error: No hay una sesión activa");
+      return;
+    }
+    const response = await fetch('https://localhost:7156/api/Session/save', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        sessionId: userStore.sessionId
+      })
+    });
+    if (!response.ok) {
+      throw new Error('Error al guardar el saldo');
+    }
+    const result = await response.json();
+    userStore.updateBalance(result.balance);
+    bet.value.balance = result.balance;
+    currentBet.value.balance = result.balance;
+    alert(`✅ Saldo guardado correctamente: $${result.balance}`);
   } catch (error) {
     alert("❌ Error guardando el saldo: " + error.message);
   }
@@ -413,21 +500,7 @@ const colorMap = {
   31: 'black', 32: 'red', 33: 'black', 34: 'red', 35: 'black', 36: 'red'
 };
 
-function getNum(idx) {
-  const i = (idx % numSeg + numSeg) % numSeg;
-  return numbers[i];
-}
 
-function getCol(idx) {
-  const i = (idx % numSeg + numSeg) % numSeg;
-  const num = numbers[i];
-  // Añadimos una verificación y un log
-  if (colorMap[num] === undefined) {
-    console.error(`No se encontró color para el número ${num}`);
-    return 'green'; // Valor por defecto
-  }
-  return colorMap[num];
-}
 
 function addFlipper() {
   const fl = document.createElement('div');
@@ -456,9 +529,9 @@ function animateWheel(winningNumber) {
   const delta = targetAngle;
   
   function frame(now) {
-    const t = Math.min((now - start) / 5000, 1);
-    const eased = (--t) * t * t + 1;
-    const current = initial + delta * eased;
+    let t = Math.min((now - start) / 5000, 1);
+    t = (--t) * t * t + 1;
+    const current = initial + delta * t;
     layer2.value.style.transform = `translate(-50%,-50%) rotate(${current}deg)`;
     layer4.value.style.transform = `translate(-50%,-50%) rotate(${current}deg)`;
     if (t < 1) {
@@ -531,9 +604,73 @@ function animateWheel(winningNumber) {
   }
 }*/
 
+/*function getNum(idx) {
+  const i = (idx % numSeg + numSeg) % numSeg;
+  return numbers[i];
+}
+
+function getCol(idx) {
+  const i = (idx % numSeg + numSeg) % numSeg;
+  const num = numbers[i];
+  // Añadimos una verificación y un log
+  if (colorMap[num] === undefined) {
+    console.error(`No se encontró color para el número ${num}`);
+    return 'green'; // Valor por defecto
+  }
+  return colorMap[num];
+}*/
+
 // Refs de la ruleta
 const layer2 = ref(null);
 const layer4 = ref(null);
+
+const getColorForNumber = (number) => {
+  if (number === 0) return 'verde';
+  const redNumbers = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+  return redNumbers.includes(number) ? 'rojo' : 'negro';
+};
+
+const resetBetDetails = () => {
+  bet.value.selectedColor = '';
+  bet.value.selectedNumber = null;
+};
+
+const isValidBet = computed(() => {
+  if (bet.value.amount <= 0 || bet.value.amount > userStore.balance) return false;
+
+  switch (bet.value.type) {
+    case 'Color':
+      return !!bet.value.selectedColor;
+    case 'Numero':
+      return bet.value.selectedNumber !== null && 
+             bet.value.selectedNumber >= 0 && 
+             bet.value.selectedNumber <= 36;
+    case 'NumeroColor':
+      return bet.value.selectedNumber !== null && 
+             bet.value.selectedNumber >= 0 && 
+             bet.value.selectedNumber <= 36 && 
+             !!bet.value.selectedColor;
+    default:
+      return false;
+  }
+});
+
+const validateNumberRange = (event) => {
+  const value = parseInt(event.target.value);
+  if (value < 0) {
+    bet.value.selectedNumber = 0;
+  } else if (value > 36) {
+    bet.value.selectedNumber = 36;
+  }
+};
+
+const isColorMatch = computed(() => {
+  if (bet.value.type !== 'NumeroColor' || bet.value.selectedNumber === null || !bet.value.selectedColor) {
+    return true;
+  }
+  const actualColor = getColorForNumber(bet.value.selectedNumber);
+  return actualColor === bet.value.selectedColor;
+});
 
 </script>
 
@@ -995,5 +1132,62 @@ const layer4 = ref(null);
 
 .save-button:active {
   transform: scale(0.98);
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.modal-buttons button {
+  flex: 1;
+  padding: 0.8rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modal-buttons .btn-submit {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.modal-buttons .btn-cancel {
+  background-color: #f44336;
+  color: white;
+}
+
+.modal-buttons button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.modal-buttons button:active {
+  transform: translateY(0);
+}
+
+.color-preview {
+  margin-top: 10px;
+  padding: 5px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+}
+
+.color-preview span {
+  display: block;
+  font-size: 0.9em;
+  margin: 5px 0;
+}
+
+.color-warning {
+  color: #f44336;
+  font-weight: bold;
+}
+
+.color-match {
+  color: #4CAF50;
 }
 </style>

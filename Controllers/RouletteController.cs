@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using RouletteTechTest.API.Models;
 using RouletteTechTest.API.Models.Entities;
 using RouletteTechTest.API.Services;
 
@@ -24,12 +25,12 @@ namespace RouletteTechTest.API.Controllers
         }
 
         [HttpPost("bet")]
-        public async Task<ActionResult<BetResult>> Bet([FromBody] BetRequest betRequest)
+        public async Task<ActionResult<BetResponse>> Bet([FromBody] BetRequest betRequest)
         {
             if (betRequest == null)
                 return BadRequest("Solicitud de apuesta inválida.");
 
-            var betResult = await _rouletteService.ProcessBetAsync(betRequest);
+            var betResult = await _rouletteService.ProcessBet(betRequest);
             return Ok(betResult);
         }
     }

@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using RouletteTechTest.API.Data;
+using RouletteTechTest.API.Models;
 using RouletteTechTest.API.Models.Entities;
 using RouletteTechTest.API.Services;
 
@@ -9,34 +11,86 @@ namespace RouletteTechTest.API.Controllers
     public class SessionController : ControllerBase
     {
         private readonly ISessionService _sessionService;
+        private readonly IUserRepository _userRepository;
+        private readonly List<Guid> _sessions = new List<Guid>();
 
-        public SessionController(ISessionService sessionService)
+        public SessionController(ISessionService sessionService, IUserRepository userRepository)
         {
             _sessionService = sessionService;
+            _userRepository = userRepository;
         }
 
-        // POST: api/session/start
+
         [HttpPost("start")]
-        public ActionResult<SessionGame> StartSession([FromBody] StartSessionRequest request)
+        public async Task<ActionResult<SessionGame>> StartSession([FromBody] StartSessionRequest request)
         {
-            if (request == null || string.IsNullOrWhiteSpace(request.UserName) || request.InitialBalance < 0)
+            if (request == null || string.IsNullOrWhiteSpace(request.UserName))
             {
                 return BadRequest("Solicitud de inicio de sesión inválida.");
             }
 
-            var session = _sessionService.StartSession(request.UserName, request.InitialBalance);
+            // Normalizar el nombre de usuario a minúsculas
+            request.UserName = request.UserName.ToLower();
+
+            // Verificar si el usuario existe
+            var existingUser = await _userRepository.GetUserByNameAsync(request.UserName);
+            decimal finalBalance;
+
+            if (existingUser != null)
+            {
+                // Si el usuario existe, usar su balance existente
+                finalBalance = existingUser.Balance;
+            }
+            else
+            {
+                // Si el usuario no existe, crear uno nuevo con balance 0
+                var newUser = new User
+                {
+                    UserName = request.UserName,
+                    Balance = 0
+                };
+                await _userRepository.AddUserAsync(newUser);
+                await _userRepository.SaveChangesAsync();
+                finalBalance = 0;
+            }
+
+            // Si se proporciona un balance inicial, agregarlo
+            if (request.InitialBalance > 0)
+            {
+                finalBalance += request.InitialBalance;
+                var user = existingUser ?? await _userRepository.GetUserByNameAsync(request.UserName);
+                if (user != null)
+                {
+                    user.Balance = finalBalance;
+                    await _userRepository.UpdateUserAsync(user);
+                    await _userRepository.SaveChangesAsync();
+                }
+            }
+
+            // Crear la sesión con el balance final
+            var session = _sessionService.StartSession(request.UserName, finalBalance);
             return Ok(session);
         }
 
-        // POST: api/session/bet
+
         [HttpPost("bet")]
-        public ActionResult<BetResult> ProcessBet([FromBody] SessionBetRequest request)
+        public async Task<ActionResult<BetResponse>> ProcessBet([FromBody]SessionBetRequest request)
         {
+
             if (request == null || request.SessionId == Guid.Empty)
             {
                 return BadRequest("Solicitud de apuesta inválida.");
             }
-            var betResult = _sessionService.ProcessBet(request.SessionId, request.Bet);
+
+            if (request.Bet == null)
+            {
+                return BadRequest("Apuesta inválida.");
+            }
+
+            // Asignar el SessionId al BetRequest
+            request.Bet.SessionId = request.SessionId;
+
+            var betResult = await _sessionService.ProcessBet(request.Bet);
             return Ok(betResult);
         }
 
@@ -57,14 +111,23 @@ namespace RouletteTechTest.API.Controllers
             if (request == null || request.SessionId == Guid.Empty)
                 return BadRequest("Solicitud inválida.");
 
+            var session = _sessionService.GetSession(request.SessionId);
+            if (session == null)
+                return NotFound("Sesión no encontrada.");
+
             await _sessionService.SaveSessionAsync(request.SessionId);
-            return Ok("Sesión guardada exitosamente y saldo actualizado.");
+
+            return Ok(new { 
+                message = "Usuario y saldo guardados exitosamente",
+                userName = session.UserName,
+                balance = session.CurrentBalance
+            });
         }
     }
 
     public class StartSessionRequest
     {
-        public string UserName { get; set; }
+        public string UserName { get; set; } = string.Empty;
         public decimal InitialBalance { get; set; }
     }
 

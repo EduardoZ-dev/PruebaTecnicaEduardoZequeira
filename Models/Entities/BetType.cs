@@ -1,9 +1,13 @@
-﻿namespace RouletteTechTest.API.Models.Entities
+﻿using System.Text.Json.Serialization;
+
+namespace RouletteTechTest.API.Models.Entities
 {
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum BetType
     {
-        Color,      // Apuesta únicamente a un color
-        ParImpar,   // Apuesta a pares o impares (además de color)
-        Numero      // Apuesta a un número y color específicos
+        Color, 
+        ParImpar,  
+        Numero,      
+        NumeroColor 
     }
 }

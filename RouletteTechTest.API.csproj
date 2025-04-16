@@ -7,6 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="RouletteTechTest.API\**" />
+    <Content Remove="RouletteTechTest.API\**" />
+    <EmbeddedResource Remove="RouletteTechTest.API\**" />
+    <None Remove="RouletteTechTest.API\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="FluentValidation" Version="11.11.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />

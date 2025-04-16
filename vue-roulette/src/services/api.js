@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 const API_BASE_URL = 'https://localhost:7156/api';
 
 // Función auxiliar para manejar las respuestas HTTP
@@ -27,30 +29,61 @@ export const startSession = async (userName, initialBalance) => {
 };
 
 // Función para procesar una apuesta
-export const processBet = async (sessionId, betData) => {
+export const processBet = async (sessionId, betRequest) => {
   try {
-    const response = await fetch('https://localhost:7156/api/session/bet', {
+    console.log('Enviando apuesta:', {
+      sessionId,
+      betRequest: JSON.stringify(betRequest, null, 2)
+    });
+
+    const sessionBetRequest = {
+      sessionId: sessionId,
+      bet: betRequest
+    };
+
+    const response = await fetch(`${API_BASE_URL}/Session/bet`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        sessionId: sessionId,
-        bet: {
-          userName: betData.userName,
-          amount: betData.amount,
-          type: betData.type,
-          value: betData.value
-        }
-      })
+      body: JSON.stringify(sessionBetRequest)
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Error en la apuesta: ${errorText}`);
+      console.error('Error en processBet:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorText
+      });
+
+      let errorMessage = 'Error al procesar la apuesta';
+      try {
+        const errorData = JSON.parse(errorText);
+        if (errorData) {
+          if (typeof errorData === 'string') {
+            errorMessage = errorData;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (errorData.title) {
+            errorMessage = errorData.title;
+          }
+        }
+      } catch (e) {
+        errorMessage = errorText || `Error ${response.status}: ${response.statusText}`;
+      }
+
+      throw new Error(errorMessage);
     }
 
-    return await response.json();
+    const responseText = await response.text();
+    if (!responseText) {
+      throw new Error('Respuesta vacía del servidor');
+    }
+
+    const result = JSON.parse(responseText);
+    console.log('Respuesta del servidor:', result);
+    return result;
   } catch (error) {
     console.error('Error en processBet:', error);
     throw error;
@@ -75,9 +108,14 @@ export const saveSession = async (sessionId) => {
 };
 
 // Función para cargar un usuario
-export const loadUser = async (userName) => {
+export const loadUser = async (userName, initialBalance = null) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/User/${userName}`);
+    let url = `${API_BASE_URL}/User/load/${userName}`;
+    if (initialBalance !== null && initialBalance > 0) {
+      url += `?initialBalance=${initialBalance}`;
+    }
+    
+    const response = await fetch(url);
     return handleResponse(response);
   } catch (error) {
     console.error('Error al cargar usuario:', error);
@@ -131,11 +169,10 @@ export const spinRoulette = async () => {
 };
 
 // Función para realizar una apuesta
-export const placeBet = async (betRequest) => {
+export const placeBet = async (sessionId, betRequest) => {
   try {
-    console.log('Enviando apuesta al backend:', betRequest);
-    
-    const response = await fetch('https://localhost:7156/api/roulette/bet', {
+    console.log('Enviando apuesta al backend:', betRequest); 
+    const response = await fetch(`https://localhost:7156/api/roulette/bet/${sessionId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

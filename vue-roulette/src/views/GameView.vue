@@ -1,79 +1,205 @@
 <template>
   <div class="game-view">
     <!-- 1. GameMenu se muestra si no hay usuario activo -->
-    <GameMenu v-if="!currentUser" @start-new-game="handleStartNewGame" @load-game="handleGameLoad" />
+    <GameMenu v-if="!currentUser || !showBetForm" @start-new-game="handleStartNewGame" @load-game="handleGameLoad" />
     
     <!-- 2. Formulario de Apuestas se muestra cuando hay usuario y showBetForm es true -->
     <div v-else-if="showBetForm" class="bet-form">
-      <h2>Realiza tu Apuesta</h2>
-      <!-- Muestra datos del usuario -->
       <div class="user-info">
-        <p><strong>Jugador:</strong> {{ currentUser.name }}</p>
-        <p><strong>Saldo:</strong> ${{ currentUser.balance }}</p>
+        <h3>Información del Jugador</h3>
+        <p><strong>Nombre:</strong> {{ currentUser?.name || 'No disponible' }}</p>
+        <p><strong>Saldo:</strong> ${{ currentUser?.balance?.toFixed(2) || '0.00' }}</p>
+        <p><strong>ID Sesión:</strong> {{ currentSessionId || 'No disponible' }}</p>
       </div>
 
-      <!-- Formulario de Apuestas -->
-      <!-- Nota: Solamente se permite una opción: Color, Paridad o Número -->
-      <form @submit.prevent="submitBet">
-        <!-- Monto a apostar -->
-        <div class="form-group">
-          <label for="betAmount">Monto a Apostar:</label>
-          <input type="number" id="betAmount" v-model.number="betAmount" :max="currentUser.balance" min="1" required />
-        </div>
-
-        <!-- Selector de Tipo de Apuesta -->
-        <div class="form-group">
-          <label>Tipo de apuesta:</label>
-          <div class="bet-type-selector">
-            <label>
-              <input type="radio" v-model="betType" value="color"
-                @change="selectedOption = '', selectedNumber = null" />
-              Color
-            </label>
-            <label>
-              <input type="radio" v-model="betType" value="paridad"
-                @change="selectedOption = '', selectedNumber = null" />
-              Paridad
-            </label>
-            <label>
-              <input type="radio" v-model="betType" value="numero"
-                @change="selectedOption = '', selectedNumber = null" />
-              Número
-            </label>
+      <div v-if="currentUser && currentUser.balance > 0" class="betting-options">
+        <h3>Opciones de Apuesta</h3>
+        <form @submit.prevent="submitBet">
+          <div class="form-group">
+            <label for="betAmount">Cantidad a Apostar:</label>
+            <input
+              type="number"
+              id="betAmount"
+              v-model="amount"
+              required
+              min="0.01"
+              :max="currentUser.balance"
+              step="0.01"
+              class="form-control"
+            />
           </div>
-        </div>
 
-        <!-- Opciones para Color -->
-        <div class="form-group" v-if="betType === 'color'">
-          <label for="colorOption">Selecciona un color:</label>
-          <select id="colorOption" v-model="selectedOption" required>
-            <option disabled value="">Selecciona una opción</option>
-            <option value="red">Rojo</option>
-            <option value="black">Negro</option>
-          </select>
-        </div>
+          <div class="form-group">
+            <label>Tipo de Apuesta:</label>
+            <div class="bet-type-options">
+              <div class="form-check">
+                <input
+                  type="radio"
+                  id="colorBet"
+                  v-model="betType"
+                  value="color"
+                  class="form-check-input"
+                />
+                <label for="colorBet" class="form-check-label">Color</label>
+              </div>
+              <div class="form-check">
+                <input
+                  type="radio"
+                  id="evenOddBet"
+                  v-model="betType"
+                  value="evenOdd"
+                  class="form-check-input"
+                />
+                <label for="evenOddBet" class="form-check-label">Par/Impar</label>
+              </div>
+              <div class="form-check">
+                <input
+                  type="radio"
+                  id="numberBet"
+                  v-model="betType"
+                  value="number"
+                  class="form-check-input"
+                />
+                <label for="numberBet" class="form-check-label">Número</label>
+              </div>
+              <div class="form-check">
+                <input
+                  type="radio"
+                  id="numberColorBet"
+                  v-model="betType"
+                  value="numberColor"
+                  class="form-check-input"
+                />
+                <label for="numberColorBet" class="form-check-label">Número y Color</label>
+              </div>
+            </div>
+          </div>
 
-        <!-- Opciones para Paridad -->
-        <div class="form-group" v-if="betType === 'paridad'">
-          <label for="paridadOption">Selecciona una paridad:</label>
-          <select id="paridadOption" v-model="selectedOption" required>
-            <option disabled value="">Selecciona una opción</option>
-            <option value="par">Par</option>
-            <option value="impar">Impar</option>
-          </select>
-        </div>
+          <div v-if="betType === 'color'" class="form-group">
+            <label>Seleccione Color:</label>
+            <div class="color-options">
+              <div class="form-check">
+                <input
+                  type="radio"
+                  id="redColor"
+                  v-model="selectedOption"
+                  value="rojo"
+                  class="form-check-input"
+                />
+                <label for="redColor" class="form-check-label">Rojo</label>
+              </div>
+              <div class="form-check">
+                <input
+                  type="radio"
+                  id="blackColor"
+                  v-model="selectedOption"
+                  value="negro"
+                  class="form-check-input"
+                />
+                <label for="blackColor" class="form-check-label">Negro</label>
+              </div>
+            </div>
+          </div>
 
-        <!-- Opción para Número -->
-        <div class="form-group" v-if="betType === 'numero'">
-          <label for="betNumber">Número (0-36):</label>
-          <input type="number" id="betNumber" v-model.number="selectedOption" min="0" max="36" required />
-        </div>
-        <!-- Botones del formulario -->
-        <div class="form-buttons">
-          <button type="submit" class="btn-submit">Apostar</button>
-          <button type="button" class="btn-cancel" @click="resetGame">Salir</button>
-        </div>
-      </form>
+          <div v-if="betType === 'evenOdd'" class="form-group">
+            <label>Seleccione Par/Impar y Color:</label>
+            <div class="even-odd-options">
+              <div class="form-check">
+                <input
+                  type="radio"
+                  id="parRojo"
+                  v-model="selectedOption"
+                  value="par-rojo"
+                  class="form-check-input"
+                />
+                <label for="parRojo" class="form-check-label">Par Rojo</label>
+              </div>
+              <div class="form-check">
+                <input
+                  type="radio"
+                  id="parNegro"
+                  v-model="selectedOption"
+                  value="par-negro"
+                  class="form-check-input"
+                />
+                <label for="parNegro" class="form-check-label">Par Negro</label>
+              </div>
+              <div class="form-check">
+                <input
+                  type="radio"
+                  id="imparRojo"
+                  v-model="selectedOption"
+                  value="impar-rojo"
+                  class="form-check-input"
+                />
+                <label for="imparRojo" class="form-check-label">Impar Rojo</label>
+              </div>
+              <div class="form-check">
+                <input
+                  type="radio"
+                  id="imparNegro"
+                  v-model="selectedOption"
+                  value="impar-negro"
+                  class="form-check-input"
+                />
+                <label for="imparNegro" class="form-check-label">Impar Negro</label>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="betType === 'number'" class="form-group">
+            <label for="numberSelect">Seleccione Número (0-36):</label>
+            <input
+              type="number"
+              id="numberSelect"
+              v-model="selectedOption"
+              min="0"
+              max="36"
+              class="form-control"
+            />
+          </div>
+
+          <div v-if="betType === 'numberColor'" class="form-group">
+            <label for="numberColorSelect">Seleccione Número (0-36):</label>
+            <input
+              type="number"
+              id="numberColorSelect"
+              v-model="selectedNumber"
+              min="0"
+              max="36"
+              class="form-control"
+            />
+            <label>Seleccione Color:</label>
+            <div class="color-options">
+              <div class="form-check">
+                <input
+                  type="radio"
+                  id="redColorNumber"
+                  v-model="selectedColor"
+                  value="rojo"
+                  class="form-check-input"
+                />
+                <label for="redColorNumber" class="form-check-label">Rojo</label>
+              </div>
+              <div class="form-check">
+                <input
+                  type="radio"
+                  id="blackColorNumber"
+                  v-model="selectedColor"
+                  value="negro"
+                  class="form-check-input"
+                />
+                <label for="blackColorNumber" class="form-check-label">Negro</label>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">Realizar Apuesta</button>
+        </form>
+      </div>
+      <div v-else class="no-balance-warning">
+        <p>No tienes saldo suficiente para realizar apuestas.</p>
+      </div>
     </div>
 
     <!-- Mensaje de carga o error -->
@@ -97,22 +223,24 @@ import {
   spinRoulette,
   processBet
 } from '@/services/api';
+import { useUserStore } from '@/stores/user'
 
 // Router
 const router = useRouter()
 
 // Estado del juego y del usuario
-const currentUser = ref(null)       // Objeto con datos del usuario (nombre, balance, etc.)
-const showBetForm = ref(false)        // Controla la visualización del formulario de apuestas
-const currentSessionId = ref(null)    // ID de la sesión actual
+const userStore = useUserStore()
+const showBetForm = ref(false)
 
 // Variables para el formulario de apuesta
-const betAmount = ref(0)              // Monto a apostar
+const amount = ref(0)              // Monto a apostar
 const betType = ref(null)             // Tipo de apuesta seleccionado ('color', 'paridad' o 'numero')
 const selectedOption = ref('')        // Opción seleccionada para la apuesta (ya sea color, paridad o número)
+const selectedNumber = ref(null)      // Número seleccionado para la apuesta de número y color
+const selectedColor = ref(null)       // Color seleccionado para la apuesta de número y color
 
 // Monitorear cambios en currentUser
-watch(currentUser, (newVal) => {
+watch(userStore.user, (newVal) => {
   console.log("Watch - currentUser cambió a:", newVal)
 })
 
@@ -120,47 +248,98 @@ watch(currentUser, (newVal) => {
 // Funciones para recibir los datos del usuario desde GameMenu.vue
 // -----------------------------------------------------------------
 
-const handleStartNewGame = (userData) => {
-  console.log("Nuevo juego recibido:", userData)
-  
-  // Validar que los datos sean correctos
-  if (!userData || !userData.name || !userData.balance) {
-    console.error("Datos de usuario inválidos:", userData)
-    alert("Error: Datos de usuario inválidos")
-    return
-  }
+const handleStartNewGame = async (userData) => {
+  try {
+    console.log('Iniciando nuevo juego con datos:', userData);
+    const requestData = {
+      userName: userData.name,
+      initialBalance: Number(userData.balance) || 0
+    };
 
-  // Actualizar el estado
-  currentUser.value = {
-    name: userData.name,
-    balance: Number(userData.balance)
+    const response = await fetch('https://localhost:7156/api/Session/start', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestData)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Respuesta del servidor:', data);
+    
+    // Guardar usuario en Pinia
+    userStore.setUser({
+      name: data.userName,
+      balance: data.balance,
+      sessionId: data.sessionId
+    });
+
+    // Navegar directamente a la ruleta
+    router.push({
+      name: 'RouletteWheel',
+      query: {
+        sessionId: data.sessionId
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al iniciar nuevo juego:', error);
+    alert('Error al iniciar el juego. Por favor, intente nuevamente.');
   }
-  
-  showBetForm.value = true
-  
-  // Verificar que el estado se actualizó correctamente
-  console.log("Estado actualizado:", {
-    currentUser: currentUser.value,
-    showBetForm: showBetForm.value
-  })
-}
+};
 
 // Recibe el usuario cuando se inicia un juego (Nuevo Juego o Cargar Juego)
-const handleGameStart = (userData) => {
+/*const handleGameStart = (userData) => {
   console.log("Recibido en handleGameStart:", userData)
   currentUser.value = userData  // Actualizar usuario
   showBetForm.value = true        // Mostrar formulario de apuestas
   console.log("currentUser asignado:", currentUser.value)
   console.log("showBetForm:", showBetForm.value)
-}
+}*/
 
 // Si deseas manejar por separado la carga de un juego ya existente, puedes definir otro método:
-const handleGameLoad = (userData) => {
-  console.log("Recibido en handleGameLoad:", userData)
-  currentUser.value = userData
-  showBetForm.value = true
-  console.log("currentUser asignado:", currentUser.value)
-  console.log("showBetForm:", showBetForm.value)
+const handleGameLoad = async (userData) => {
+  try {
+    // 1. Consultar el backend para obtener el usuario y su balance
+    const user = await loadUser(userData.name)
+    if (!user || !user.userName) {
+      alert('El usuario no existe. Por favor, verifica el nombre ingresado.');
+      return;
+    }
+
+    // 2. Crear una nueva sesión con el balance actual del usuario
+    const session = await startSession(user.userName, userData.balance || 0)
+    if (!session || !session.sessionId) {
+      alert('No se pudo iniciar la sesión para el usuario.');
+      return;
+    }
+
+    // 3. Guardar usuario y sessionId en Pinia
+    userStore.setUser({
+      name: user.userName,
+      balance: session.balance,
+      sessionId: session.sessionId
+    })
+
+    // 4. Navegar a la ruleta
+    router.push({
+      name: 'RouletteWheel',
+      query: {
+        sessionId: session.sessionId
+      }
+    })
+  } catch (error) {
+    // Si el error es porque no existe el usuario o la respuesta no es JSON, mostrar mensaje amigable
+    if (error.message && (error.message.includes('not found') || error.message.includes('No se encontró') || error.message.includes('Unexpected token'))) {
+      alert('El usuario no existe. Por favor, verifica el nombre ingresado.');
+    } else {
+      alert('Error al cargar el usuario: ' + (error.message || error));
+    }
+  }
 }
 
 // -----------------------------------------------------------------
@@ -169,17 +348,17 @@ const handleGameLoad = (userData) => {
 
 const submitBet = async () => {
   try {
-    if (!currentUser.value.name) {
+    if (!userStore.user.name) {
       alert("Error: No hay usuario activo");
       return;
     }
 
-    if (!betAmount.value || betAmount.value <= 0) {
+    if (!amount.value || amount.value <= 0) {
       alert("Error: El monto de la apuesta debe ser mayor que cero");
       return;
     }
 
-    if (currentUser.value.balance < betAmount.value) {
+    if (userStore.user.balance < amount.value) {
       alert("Error: Saldo insuficiente");
       return;
     }
@@ -189,57 +368,103 @@ const submitBet = async () => {
       return;
     }
 
-    // Iniciar sesión si no existe
-    if (!currentSessionId.value) {
-      console.log('Iniciando nueva sesión para:', currentUser.value.name);
-      const session = await startSession(currentUser.value.name, currentUser.value.balance);
-      currentSessionId.value = session.sessionId;
-      console.log('Sesión iniciada:', session);
+    // Verificar que tenemos una sesión activa
+    if (!userStore.user.sessionId) {
+      throw new Error('No hay una sesión activa');
     }
 
     // Mapear el tipo de apuesta al enum del backend
     const betTypeMap = {
       'color': 0,    // Color
-      'paridad': 1,  // ParImpar
-      'numero': 2    // Numero
+      'evenOdd': 1,  // ParImpar
+      'number': 2,    // Numero
+      'numberColor': 3  // Numero y Color
     };
 
-    // Preparar la apuesta según el tipo seleccionado
-    const bet = {
-      userName: currentUser.value.name,
-      betType: betTypeMap[betType.value],
-      betAmount: betAmount.value,
-      selectedColor: betType.value === 'color' ? selectedOption.value : null,
-      selectedParity: betType.value === 'paridad' ? selectedOption.value : null,
-      selectedNumber: betType.value === 'numero' ? parseInt(selectedOption.value) : null
+    const betRequest = {
+      userName: userStore.user.name,
+      type: betTypeMap[betType.value],
+      amount: parseFloat(amount.value),
+      selectedColor: null,
+      selectedParity: null,
+      selectedNumber: null
     };
+
+    console.log('DEBUG - Bet Type Mapping:');
+    console.log('Original bet type:', betType.value);
+    console.log('Mapped bet type:', betTypeMap[betType.value]);
+    console.log('Full bet request:', betRequest);
+
+    switch (betType.value) {
+      case 'color':
+        betRequest.selectedColor = selectedOption.value;
+        console.log('Apuesta por color:', { color: selectedOption.value });
+        break;
+      case 'evenOdd':
+        const [parity, color] = selectedOption.value.split('-');
+        betRequest.selectedParity = parity;
+        betRequest.selectedColor = color;
+        console.log('Apuesta por par/impar:', { parity, color });
+        break;
+      case 'number':
+        if (!selectedOption.value || isNaN(selectedOption.value)) {
+          throw new Error('Debes seleccionar un número válido');
+        }
+        const number = parseInt(selectedOption.value);
+        if (number < 0 || number > 36) {
+          throw new Error('El número debe estar entre 0 y 36');
+        }
+        betRequest.selectedNumber = number;
+        console.log('Apuesta por número:', { number });
+        break;
+      case 'numberColor':
+        if (!selectedNumber.value || isNaN(selectedNumber.value)) {
+          throw new Error('Debes seleccionar un número válido');
+        }
+        const numberColor = parseInt(selectedNumber.value);
+        if (numberColor < 0 || numberColor > 36) {
+          throw new Error('El número debe estar entre 0 y 36');
+        }
+        if (!selectedColor.value) {
+          throw new Error('Debes seleccionar un color');
+        }
+        betRequest.selectedNumber = numberColor;
+        betRequest.selectedColor = selectedColor.value;
+        console.log('DEBUG - Apuesta por número y color:');
+        console.log('Número seleccionado (raw):', selectedNumber.value);
+        console.log('Número seleccionado (parsed):', numberColor);
+        console.log('Color seleccionado:', selectedColor.value);
+        console.log('Objeto betRequest:', JSON.stringify(betRequest, null, 2));
+        break;
+    }
 
     // Validar que la apuesta tenga al menos un valor seleccionado
-    if (!bet.selectedColor && !bet.selectedParity && bet.selectedNumber === null) {
+    if (!betRequest.selectedColor && !betRequest.selectedParity && betRequest.selectedNumber === null) {
       throw new Error('Debes seleccionar al menos una opción para apostar');
     }
 
-    console.log('Enviando apuesta:', { sessionId: currentSessionId.value, bet });
+    // Validar que para apuestas de par/impar se haya seleccionado una opción
+    if (betType.value === 'evenOdd' && !selectedOption.value) {
+      throw new Error('Debes seleccionar una combinación de par/impar y color');
+    }
+
+    console.log('Datos completos de la apuesta:', {
+      tipo: betType.value,
+      monto: amount.value,
+      numero: betRequest.selectedNumber,
+      color: betRequest.selectedColor,
+      paridad: betRequest.selectedParity,
+      request: betRequest
+    });
 
     // Procesar la apuesta
-    const result = await processBet(currentSessionId.value, bet);
-    
-    // Actualizar el saldo del usuario
-    currentUser.value.balance = result.newBalance;
+    const result = await processBet(userStore.user.sessionId, betRequest);
     
     // Redirigir a RouletteWheel con los resultados
     router.push({
       name: 'RouletteWheel',
       query: {
-        userName: currentUser.value.name,
-        balance: result.newBalance,
-        amount: betAmount.value,
-        option: selectedOption.value,
-        betType: betType.value,
-        spinResult: JSON.stringify(result.spinResult),
-        prize: result.prize,
-        message: result.message,
-        sessionId: currentSessionId.value
+        sessionId: userStore.user.sessionId
       }
     });
 
@@ -266,7 +491,11 @@ const submitBet = async () => {
 // -----------------------------------------------------------------
 
 const resetGame = () => {
-  currentUser.value = null
+  userStore.setUser({
+    name: null,
+    balance: 0,
+    sessionId: null
+  })
   showBetForm.value = false
 }
 </script>
@@ -413,10 +642,43 @@ const resetGame = () => {
 }
 
 .user-info {
-  background: rgba(255, 255, 255, 0.1);
+  background-color: #f8f9fa;
   padding: 1rem;
   border-radius: 8px;
   margin-bottom: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.user-info h3 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
+}
+
+.user-info p {
+  margin: 0.5rem 0;
+  color: #495057;
+}
+
+.betting-options {
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.no-balance-warning {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.bet-form {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 2rem;
 }
 
 .loading-message {
