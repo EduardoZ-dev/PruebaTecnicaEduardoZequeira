@@ -82,10 +82,6 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-
-// Utilizamos el router si es necesario para redireccionamientos (aunque en este flujo la redirección la gestiona el padre)
-const router = useRouter()
 
 // Definición de eventos personalizados: uno para Nuevo Juego y otro para Cargar Juego.
 const emit = defineEmits(['start-new-game', 'load-game'])

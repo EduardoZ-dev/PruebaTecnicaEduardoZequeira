@@ -75,31 +75,7 @@
             </div>
           </div>
 
-          <div v-if="betType === 'color'" class="form-group">
-            <label>Seleccione Color:</label>
-            <div class="color-options">
-              <div class="form-check">
-                <input
-                  type="radio"
-                  id="redColor"
-                  v-model="selectedOption"
-                  value="rojo"
-                  class="form-check-input"
-                />
-                <label for="redColor" class="form-check-label">Rojo</label>
-              </div>
-              <div class="form-check">
-                <input
-                  type="radio"
-                  id="blackColor"
-                  v-model="selectedOption"
-                  value="negro"
-                  class="form-check-input"
-                />
-                <label for="blackColor" class="form-check-label">Negro</label>
-              </div>
-            </div>
-          </div>
+
 
           <div v-if="betType === 'evenOdd'" class="form-group">
             <label>Seleccione Par/Impar y Color:</label>
@@ -145,18 +121,6 @@
                 <label for="imparNegro" class="form-check-label">Impar Negro</label>
               </div>
             </div>
-          </div>
-
-          <div v-if="betType === 'number'" class="form-group">
-            <label for="numberSelect">Seleccione Número (0-36):</label>
-            <input
-              type="number"
-              id="numberSelect"
-              v-model="selectedOption"
-              min="0"
-              max="36"
-              class="form-control"
-            />
           </div>
 
           <div v-if="betType === 'numberColor'" class="form-group">
@@ -216,11 +180,7 @@ import GameMenu from '../components/GameMenu.vue'
 import { useRouter } from 'vue-router'
 import { 
   startSession, 
-  placeBet, 
   loadUser, 
-  updateUserBalance,
-  saveUserBalance,
-  spinRoulette,
   processBet
 } from '@/services/api';
 import { useUserStore } from '@/stores/user'
@@ -291,15 +251,6 @@ const handleStartNewGame = async (userData) => {
     alert('Error al iniciar el juego. Por favor, intente nuevamente.');
   }
 };
-
-// Recibe el usuario cuando se inicia un juego (Nuevo Juego o Cargar Juego)
-/*const handleGameStart = (userData) => {
-  console.log("Recibido en handleGameStart:", userData)
-  currentUser.value = userData  // Actualizar usuario
-  showBetForm.value = true        // Mostrar formulario de apuestas
-  console.log("currentUser asignado:", currentUser.value)
-  console.log("showBetForm:", showBetForm.value)
-}*/
 
 // Si deseas manejar por separado la carga de un juego ya existente, puedes definir otro método:
 const handleGameLoad = async (userData) => {
@@ -390,11 +341,6 @@ const submitBet = async () => {
       selectedNumber: null
     };
 
-    console.log('DEBUG - Bet Type Mapping:');
-    console.log('Original bet type:', betType.value);
-    console.log('Mapped bet type:', betTypeMap[betType.value]);
-    console.log('Full bet request:', betRequest);
-
     switch (betType.value) {
       case 'color':
         betRequest.selectedColor = selectedOption.value;
@@ -430,7 +376,6 @@ const submitBet = async () => {
         }
         betRequest.selectedNumber = numberColor;
         betRequest.selectedColor = selectedColor.value;
-        console.log('DEBUG - Apuesta por número y color:');
         console.log('Número seleccionado (raw):', selectedNumber.value);
         console.log('Número seleccionado (parsed):', numberColor);
         console.log('Color seleccionado:', selectedColor.value);

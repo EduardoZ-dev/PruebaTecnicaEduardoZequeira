@@ -88,9 +88,10 @@
 
     <!-- 📋 Datos de la Apuesta -->
     <div class="apuesta-info">
-      <h3>📋 Datos de la Apuesta</h3>
+      <h3 style="color: aliceblue;">📋 Datos de la Apuesta</h3>
       <p><strong>Usuario:</strong> {{ userStore.name }}</p>
       <p><strong>Saldo:</strong> ${{ userStore.balance }}</p>
+      <p><strong>Saldo de la sesión:</strong> ${{ userStore.sessionBalance }}</p>
       <p><strong>Monto apostado:</strong> ${{ currentBet.amount || 0 }}</p>
       <p><strong>Opción elegida:</strong> {{ currentBet.value || '-' }}</p>
 
@@ -114,7 +115,6 @@
         <select v-model="bet.type">
           <option value="Color">Color</option>
           <option value="ParImpar">Par/Impar</option>
-          <option value="Numero">Número</option>
           <option value="NumeroColor">Número y Color</option>
         </select>
       </label>
@@ -303,7 +303,7 @@ const confirmarNuevaApuesta = () => {
     amount: bet.value.amount,
     type: bet.value.type,
     selectedNumber: bet.value.selectedNumber,
-    selectedColor: bet.value.selectedColor,
+    selectedColor: bet.value.type === 'ParImpar' ? bet.value.selectedOption.split('-')[1] : bet.value.selectedColor,
     selectedParity: bet.value.type === 'ParImpar' ? bet.value.selectedOption.split('-')[0] : null
   };
 
@@ -357,6 +357,7 @@ const handleSpin = async () => {
 
     console.log('DEBUG - Enviando apuesta:', {
       sessionId: userStore.sessionId,
+      currentBalance: userStore.sessionBalance,
       betRequest: JSON.stringify(betRequest, null, 2)
     });
 
@@ -369,6 +370,10 @@ const handleSpin = async () => {
     }
 
     const { spinResult, prize, newBalance } = betResult.betResult;
+    userStore.updateSessionBalance(newBalance);
+
+    currentBet.value.balance = newBalance;
+    bet.value.balance = newBalance;
 
     if (!spinResult || typeof spinResult.number === 'undefined') {
       console.error('DEBUG - Resultado inválido:', spinResult);
@@ -378,7 +383,9 @@ const handleSpin = async () => {
     winningNumber.value = spinResult.number;
     winningColor.value = spinResult.color;
     isBetWinner.value = prize > 0;
-    userStore.updateBalance(newBalance);
+
+
+    //userStore.updateBalance(newBalance);
     
     history.value.unshift({
       number: spinResult.number,
@@ -458,22 +465,32 @@ const guardarSaldo = async () => {
       alert("Error: No hay una sesión activa");
       return;
     }
+
+    const dataToSend = {
+      sessionId: userStore.sessionId,
+      currentBalance: userStore.sessionBalance  // 👈 este es el que faltaba
+    };
+
     const response = await fetch('https://localhost:7156/api/Session/save', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        sessionId: userStore.sessionId
-      })
+      body: JSON.stringify(dataToSend)
     });
+
     if (!response.ok) {
       throw new Error('Error al guardar el saldo');
     }
+
     const result = await response.json();
+
     userStore.updateBalance(result.balance);
+    userStore.updateSessionBalance(result.balance);
+
     bet.value.balance = result.balance;
     currentBet.value.balance = result.balance;
+
     alert(`✅ Saldo guardado correctamente: $${result.balance}`);
   } catch (error) {
     alert("❌ Error guardando el saldo: " + error.message);
@@ -543,84 +560,6 @@ function animateWheel(winningNumber) {
   requestAnimationFrame(frame);
 }
 
-// Funciones auxiliares
-/*function updateBalance(winAmount, betAmount) {
-  currentBalance.value = winAmount > 0
-    ? currentBalance.value + winAmount
-    : currentBalance.value - betAmount;
-}*/
-
-/*function addResultMessage(message, color, amount = 0, winAmount = 0) {
-  const messageHtml = winAmount > 0
-    ? `<div style="color: ${color};">${message} 💰 Apuesta: $${amount} → Ganancia: $${winAmount}</div>`
-    : `<div style="color: ${color};">${message}</div>`;
-
-  resultMessages.value.push({
-    html: `
-      <div style="margin-top: 10px;">
-        ${messageHtml}
-        <div style="margin-top: 5px; font-weight: bold;">
-          Nuevo balance: $${currentBalance.value}
-        </div>
-      </div>
-    `
-  });
-}*/
-
-// Obtener usuario actual
-/*const fetchUsersAndSetCurrentUser = async () => {
-  try {
-    const res = await fetch("https://localhost:7156/api/User");
-    if (!res.ok || !res.headers.get("content-type")?.includes("application/json")) {
-      throw new Error("Respuesta no válida o no es JSON");
-    }
-    const data = await res.json();
-    const allUsers = data.$values;
-    user.value = allUsers.find(u => u.name === userName.value);
-    if (user.value) {
-      balance.value = user.value.balance;
-    }
-  } catch (error) {
-    console.error("Error al obtener los datos del usuario:", error);
-  }
-};*/
-
-/*const refreshUserData = async () => {
-  await fetchUsersAndSetCurrentUser();
-};*/
-
-/*async function updateBalanceInBackend(newBalance) {
-  try {
-    await fetch(`https://localhost:7156/api/User/updateBalance`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        UserName: userName.value,
-        NewBalance: newBalance
-      })
-    });
-  } catch (e) {
-    console.error("Error al actualizar balance:", e);
-  }
-}*/
-
-/*function getNum(idx) {
-  const i = (idx % numSeg + numSeg) % numSeg;
-  return numbers[i];
-}
-
-function getCol(idx) {
-  const i = (idx % numSeg + numSeg) % numSeg;
-  const num = numbers[i];
-  // Añadimos una verificación y un log
-  if (colorMap[num] === undefined) {
-    console.error(`No se encontró color para el número ${num}`);
-    return 'green'; // Valor por defecto
-  }
-  return colorMap[num];
-}*/
-
-// Refs de la ruleta
 const layer2 = ref(null);
 const layer4 = ref(null);
 

@@ -18,7 +18,6 @@ namespace RouletteTechTest.API.Services
         public SpinResult Spin()
         {
             int number = _random.Next(0, 37);
-            Console.WriteLine($"DEBUG - Spin:");
             Console.WriteLine($"Número generado: {number}");
             string color = RouletteColors.GetColorForNumber(number);
             Console.WriteLine($"Color asignado: {color}");
@@ -30,11 +29,6 @@ namespace RouletteTechTest.API.Services
             if (bet == null || spinResult == null)
                 return -bet.Amount;
 
-            Console.WriteLine($"\nDEBUG - CalculatePrize:");
-            Console.WriteLine($"Tipo de apuesta: {bet.Type}");
-            Console.WriteLine($"Color apostado (original): {bet.SelectedColor}");
-            Console.WriteLine($"Número resultado: {spinResult.Number}");
-
             switch (bet.Type)
             {
                 case BetType.Color:
@@ -42,15 +36,8 @@ namespace RouletteTechTest.API.Services
                     string resultColor = RouletteColors.GetColorForNumber(spinResult.Number);
                     bool isWinningBet = string.Equals(normalizedBetColor, resultColor, StringComparison.OrdinalIgnoreCase);
 
-                    Console.WriteLine($"DEBUG - Apuesta por color:");
-                    Console.WriteLine($"Color apostado (original): {bet.SelectedColor}");
-                    Console.WriteLine($"Color apostado (normalizado): {normalizedBetColor}");
-                    Console.WriteLine($"Color resultado: {resultColor}");
-                    Console.WriteLine($"¿Colores coinciden? {isWinningBet}");
-                    Console.WriteLine($"Número resultado: {spinResult.Number}");
-
                     if (isWinningBet)
-                        return bet.Amount * 2m;
+                        return bet.Amount * 0.5m;
                     break;
 
                 case BetType.ParImpar:
@@ -72,22 +59,8 @@ namespace RouletteTechTest.API.Services
                             colorMatch = RouletteColors.RedNumbers.Contains(spinResult.Number);
                         }
                         
-                        Console.WriteLine($"DEBUG - Apuesta par/impar:");
-                        Console.WriteLine($"Número: {spinResult.Number}");
-                        Console.WriteLine($"Paridad resultado: {resultParity}");
-                        Console.WriteLine($"Paridad apostada: {normalizedBetParity}");
-                        Console.WriteLine($"¿Paridad coincide? {parityMatch}");
-                        Console.WriteLine($"¿Color coincide? {colorMatch}");
-                        
                         if (parityMatch && colorMatch)
-                            return bet.Amount * 4m;
-                    }
-                    break;
-
-                case BetType.Numero:
-                    if (bet.SelectedNumber == spinResult.Number)
-                    {
-                        return bet.Amount * 35m;
+                            return bet.Amount * 1m;
                     }
                     break;
 
@@ -98,17 +71,8 @@ namespace RouletteTechTest.API.Services
                         string spinResultColor = RouletteColors.GetColorForNumber(spinResult.Number);
                         bool colorMatch = string.Equals(betColor, spinResultColor, StringComparison.OrdinalIgnoreCase);
 
-                        Console.WriteLine($"DEBUG - Apuesta número y color:");
-                        Console.WriteLine($"Número apostado: {bet.SelectedNumber}");
-                        Console.WriteLine($"Número resultado: {spinResult.Number}");
-                        Console.WriteLine($"Color apostado: {betColor}");
-                        Console.WriteLine($"Color resultado: {spinResultColor}");
-                        Console.WriteLine($"¿Colores coinciden? {colorMatch}");
-
                         if (colorMatch)
-                            return bet.Amount * 36m;
-                        else
-                            return bet.Amount * 35m;
+                            return bet.Amount * 3m;
                     }
                     break;
             }
@@ -121,7 +85,6 @@ namespace RouletteTechTest.API.Services
             if (betRequest == null)
                 throw new ArgumentException("Apuesta inválida");
 
-            Console.WriteLine("\nDEBUG - ProcessBetAsync - Inicio:");
             Console.WriteLine($"Tipo de apuesta: {betRequest.Type}");
             Console.WriteLine($"Color seleccionado (original): {betRequest.SelectedColor ?? "null"}");
             Console.WriteLine($"Monto: {betRequest.Amount}");
@@ -138,28 +101,51 @@ namespace RouletteTechTest.API.Services
                 case BetType.Color:
                     if (string.IsNullOrWhiteSpace(betRequest.SelectedColor))
                     {
-                        Console.WriteLine("ERROR - Color no especificado en la apuesta");
                         throw new ArgumentException("Color no especificado");
                     }
                     // Normalizar el color aquí para asegurarnos que es válido
                     string normalizedColor = RouletteColors.NormalizeColor(betRequest.SelectedColor);
                     if (string.IsNullOrWhiteSpace(normalizedColor))
                     {
-                        Console.WriteLine($"ERROR - Color inválido después de normalización: {betRequest.SelectedColor}");
                         throw new ArgumentException("Color inválido");
                     }
                     // Asignar el color normalizado de vuelta al request
                     betRequest.SelectedColor = normalizedColor;
-                    Console.WriteLine($"Color normalizado: {normalizedColor}");
+
                     break;
                 case BetType.ParImpar:
                     if (string.IsNullOrWhiteSpace(betRequest.SelectedParity))
                         throw new ArgumentException("Paridad no especificada");
                     break;
+
                 case BetType.Numero:
                     if (!betRequest.SelectedNumber.HasValue || betRequest.SelectedNumber < 0 || betRequest.SelectedNumber > 36)
                         throw new ArgumentException("Número inválido");
                     break;
+
+                case BetType.NumeroColor:
+                    if(!betRequest.SelectedNumber.HasValue || betRequest.SelectedNumber < 0 || betRequest.SelectedNumber > 36)
+                    {
+                        throw new ArgumentException("Número inválido");
+                    }
+                    if (string.IsNullOrWhiteSpace(betRequest.SelectedColor))
+                    {
+                        throw new ArgumentException("Color no especificado");
+                    }
+                    string normalizeColor = RouletteColors.NormalizeColor(betRequest.SelectedColor);
+                    if (string.IsNullOrWhiteSpace(normalizeColor))
+                    {
+                        throw new ArgumentException("Color inválido");
+                    }
+                    string expectedColor = RouletteColors.GetColorForNumber(betRequest.SelectedNumber.Value);
+                    if (!string.Equals(normalizeColor, expectedColor, StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new ArgumentException("El color no corresponde al número seleccionado");
+                    }
+                    // Asignar el color normalizado de vuelta al request
+                    betRequest.SelectedColor = normalizeColor;
+                    break;
+
                 default:
                     throw new ArgumentException("Tipo de apuesta inválido");
             }
@@ -171,15 +157,7 @@ namespace RouletteTechTest.API.Services
             if (user.Balance < betRequest.Amount)
                 throw new ArgumentException("Saldo insuficiente");
 
-            Console.WriteLine("\nDEBUG - ProcessBetAsync - Antes de Spin:");
-            Console.WriteLine($"Color seleccionado (validado): {betRequest.SelectedColor}");
-
             SpinResult spinResult = Spin();
-
-            Console.WriteLine("\nDEBUG - ProcessBetAsync - Antes de CalculatePrize:");
-            Console.WriteLine($"Color seleccionado (final): {betRequest.SelectedColor}");
-            Console.WriteLine($"Número resultado: {spinResult.Number}");
-            Console.WriteLine($"Color resultado: {spinResult.Color}");
 
             decimal prize = CalculatePrize(betRequest, spinResult);
 
@@ -220,15 +198,5 @@ namespace RouletteTechTest.API.Services
             }
             await _userRepository.SaveChangesAsync();
         }
-
-        /*public decimal CalculatePrize(Models.Entities.BetRequest bet, SpinResult spinResult)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<BetResult> ProcessBetAsync(Models.Entities.BetRequest betRequest)
-        {
-            throw new NotImplementedException();
-        }*/
     }
 }

@@ -12,12 +12,14 @@ namespace RouletteTechTest.API.Controllers
     {
         private readonly ISessionService _sessionService;
         private readonly IUserRepository _userRepository;
+        private readonly IRouletteService _rouletteService;
         private readonly List<Guid> _sessions = new List<Guid>();
 
-        public SessionController(ISessionService sessionService, IUserRepository userRepository)
+        public SessionController(ISessionService sessionService, IUserRepository userRepository, IRouletteService rouletteService)
         {
             _sessionService = sessionService;
             _userRepository = userRepository;
+            _rouletteService = rouletteService;
         }
 
 
@@ -90,7 +92,7 @@ namespace RouletteTechTest.API.Controllers
             // Asignar el SessionId al BetRequest
             request.Bet.SessionId = request.SessionId;
 
-            var betResult = await _sessionService.ProcessBet(request.Bet);
+            var betResult = await _rouletteService.ProcessBet(request.Bet);
             return Ok(betResult);
         }
 
@@ -115,7 +117,7 @@ namespace RouletteTechTest.API.Controllers
             if (session == null)
                 return NotFound("Sesión no encontrada.");
 
-            await _sessionService.SaveSessionAsync(request.SessionId);
+            await _sessionService.SaveSessionAsync(request.SessionId, request.CurrentBalance);
 
             return Ok(new { 
                 message = "Usuario y saldo guardados exitosamente",
@@ -140,5 +142,6 @@ namespace RouletteTechTest.API.Controllers
     public class SaveSessionRequest
     {
         public Guid SessionId { get; set; }
+        public decimal CurrentBalance { get; set; }
     }
 }

@@ -41,12 +41,6 @@ namespace RouletteTechTest.API.Models
             string normalizedColor = NormalizeColor(color);
             string actualColor = GetColorForNumber(number);
             
-            Console.WriteLine($"DEBUG IsValidColorForNumber:");
-            Console.WriteLine($"Número: {number}");
-            Console.WriteLine($"Color apostado (original): {color}");
-            Console.WriteLine($"Color apostado (normalizado): {normalizedColor}");
-            Console.WriteLine($"Color real del número: {actualColor}");
-            
             return string.Equals(normalizedColor, actualColor, StringComparison.OrdinalIgnoreCase);
         }
     }

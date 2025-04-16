@@ -16,7 +16,6 @@ namespace RouletteTechTest.API.Controllers
             _rouletteService = rouletteService;
         }
 
-        // GET: api/roulette/spin
         [HttpGet("spin")]
         public ActionResult<SpinResult> Spin()
         {
